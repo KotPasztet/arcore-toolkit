@@ -105,7 +105,8 @@ class ProfileStore:
             return core.obf_many(pinned)
         return [self.config.get("default_key", "pADuJF")]
 
-    def build_custom(self, query: dict, name: str) -> tuple[bytes | None, list[str]]:
+    def build_custom(self, query: dict, name: str, devices=None,
+                     keys=None) -> tuple[bytes | None, list[str]]:
         base_name = query.get("base", name if name in self.config["profiles"] else None)
         if not base_name:
             return None, []
@@ -143,8 +144,7 @@ class ProfileStore:
                     gyro_noise=num("gn"),
                     accel_noise=num("an"),
                 )
-        keys = self.keys_for(base_name, None, None)
-        return profile.to_bytes(), keys
+        return profile.to_bytes(), self.keys_for(base_name, devices, keys)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -177,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
         raw_keys = [k for k in (query.get("key") or "").split(",") if k]
 
         if "base" in query or name == "custom":
-            blob, keys = self.store.build_custom(query, name)
+            blob, keys = self.store.build_custom(query, name, devices, raw_keys)
         else:
             blob = self.store.bytes_for(name)
             keys = self.store.keys_for(name, devices, raw_keys) if blob else []
