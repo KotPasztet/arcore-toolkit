@@ -125,7 +125,7 @@ adb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib > cali
 6. `zipalign` + `apksigner` со сгенерированным debug-ключом.
 
 Переменные: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT`, `AR_VERSION`,
-`OPENCV_VERSION`, `OUT`, `KS`.
+`OPENCV_VERSION`, `OUT`, `KS`, `ABIS`, `VERSION_CODE`, `VERSION_NAME`.
 
 ## Замечания
 

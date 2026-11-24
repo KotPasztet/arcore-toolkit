@@ -18,6 +18,11 @@ AR_VERSION=${AR_VERSION:-1.57.0}
 OPENCV_VERSION=${OPENCV_VERSION:-4.9.0}
 OUT=${OUT:-arcore-toolkit.apk}
 KS=${KS:-debug.keystore}
+KS_PASS=${KS_PASS:-android}
+KEY_PASS=${KEY_PASS:-android}
+KEY_ALIAS=${KEY_ALIAS:-debug}
+VERSION_CODE=${VERSION_CODE:-1}
+VERSION_NAME=${VERSION_NAME:-0.1.0}
 # Build all ABI directories shipped by the ARCore/OpenCV AARs by default.
 # Override with e.g. ABIS=arm64-v8a to keep the APK small.
 ABIS=${ABIS:-"arm64-v8a armeabi-v7a x86 x86_64"}
@@ -53,7 +58,7 @@ find build/classes -name '*.class' > build/classes.txt
 
 "$BT/aapt2" link -o build/base.apk --manifest AndroidManifest.xml -I "$ANDROID_JAR" \
     --min-sdk-version 29 --target-sdk-version 35 \
-    --version-code 1 --version-name 0.1.0
+    --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" --replace-version
 
 cp build/dex/classes.dex build/classes.dex
 
@@ -94,12 +99,14 @@ done
 (cd build && zip -q -u base.apk classes.dex && zip -q -r -u base.apk lib)
 
 if [ ! -f "$KS" ]; then
-    keytool -genkeypair -keystore "$KS" -alias debug -storepass android -keypass android \
+    keytool -genkeypair -keystore "$KS" -alias "$KEY_ALIAS" \
+        -storepass "$KS_PASS" -keypass "$KEY_PASS" \
         -dname "CN=ARCore Toolkit" -keyalg RSA -keysize 2048 -validity 10000 >/dev/null 2>&1
 fi
 
 "$BT/zipalign" -p -f 4 build/base.apk build/aligned.apk
-"$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+"$BT/apksigner" sign --ks "$KS" --ks-pass "pass:$KS_PASS" \
+    --key-pass "pass:$KEY_PASS" --ks-key-alias "$KEY_ALIAS" \
     --out "$OUT" build/aligned.apk
 
 ls -l "$OUT"

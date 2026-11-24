@@ -165,6 +165,14 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 
 **English:** [README.md](README.md) и [docs/](docs/).
 
+## Релизы
+
+Каждый push в `main` создаёт тег `v<версия>-build.<номер>` и GitHub Release с APK
+(все ABI) и Python wheel/sdist. Чтобы пропустить релиз, добавьте `[skip release]`
+в сообщение коммита. Для стабильной подписи между релизами задайте секреты
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+`ANDROID_KEY_PASSWORD`; иначе CI подписывает одноразовым debug-ключом.
+
 ## Лицензия
 
 MIT для этого репозитория; AprilTag — BSD-2-Clause (см.
