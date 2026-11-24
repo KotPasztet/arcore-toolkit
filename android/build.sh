@@ -22,7 +22,7 @@ KS_PASS=${KS_PASS:-android}
 KEY_PASS=${KEY_PASS:-android}
 KEY_ALIAS=${KEY_ALIAS:-debug}
 VERSION_CODE=${VERSION_CODE:-1}
-VERSION_NAME=${VERSION_NAME:-0.1.0}
+VERSION_NAME=${VERSION_NAME:-0.3.0}
 # Build all ABI directories shipped by the ARCore/OpenCV AARs by default.
 # Override with e.g. ABIS=arm64-v8a to keep the APK small.
 ABIS=${ABIS:-"arm64-v8a armeabi-v7a x86 x86_64"}

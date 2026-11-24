@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arcore-profile"
-version = "0.1.0"
+version = "0.3.0"
 description = "Inspect, patch and package ARCore device profiles (reverse-engineered 1.5x)"
 readme = "README.md"
 requires-python = ">=3.9"
