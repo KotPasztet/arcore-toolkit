@@ -1,3 +1,5 @@
+**English** | [Русский](ru/06-shim.md)
+
 # ARCore shim
 
 `tools/shim` builds a drop-in replacement for the ARCore SDK C library

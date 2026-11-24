@@ -1,3 +1,5 @@
+**English** | [Русский](ru/devices.md)
+
 # Device case studies
 
 Two devices were used to develop the toolkit.  Both run ARCore without root;

@@ -1,3 +1,5 @@
+**English** | [Русский](ru/03-test-app.md)
+
 # Test app
 
 `io.github.nikonektik.arcoretoolkit` — a single APK with four screens.

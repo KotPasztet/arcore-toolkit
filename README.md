@@ -1,3 +1,5 @@
+**English** | [Русский](README.ru.md)
+
 # ARCore Toolkit
 
 Tools for **running ARCore on devices Google does not officially support**, for
@@ -159,6 +161,8 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 | [docs/07-troubleshooting.md](docs/07-troubleshooting.md) | logs, ADB, ANR, dark-screen crash |
 | [docs/devices.md](docs/devices.md) | case studies: POCO X6 Pro, Huawei P30 Lite |
 | [docs/reverse-engineering.md](docs/reverse-engineering.md) | how the profile database and key obfuscation were reverse engineered |
+
+Полная русская версия: [README.ru.md](README.ru.md) и [docs/ru/](docs/ru/).
 
 ## License
 

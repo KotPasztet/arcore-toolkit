@@ -1,3 +1,5 @@
+**English** | [Русский](ru/01-getting-started.md)
+
 # Getting started
 
 ## 1. Requirements

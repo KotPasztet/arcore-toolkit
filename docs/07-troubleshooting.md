@@ -1,3 +1,5 @@
+**English** | [Русский](ru/07-troubleshooting.md)
+
 # Troubleshooting
 
 ## ADB

@@ -1,3 +1,5 @@
+**English** | [Русский](ru/reverse-engineering.md)
+
 # Reverse engineering ARCore 1.57
 
 This is the original research log that the toolkit grew from: how the device
