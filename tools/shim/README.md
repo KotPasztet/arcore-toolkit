@@ -4,7 +4,8 @@
 |---|---|
 | `gen_shim.py` | generates `shim.c`: forwarders for every ARCore symbol an app imports |
 | `postprocess.py` | patches the generated file (dladdr lookup, internal symbols) |
-| `overrides.inc` | marker-AR overrides (AprilTag detection, pose, plane, anchors) |
+| `overrides.inc` | ARCore API overrides (fake planes, anchors, poses, capture hook) |
+| `marker_tracking.inc` | asynchronous AprilTag tracking engine: detection, two-pose ambiguity resolution, filtering and prediction |
 | `passthrough.inc` | empty variant used for a pure pass-through shim |
 | `internal.S` | trampoline for `ArSession_createWithFeaturesAndTrace` |
 | `vers.map` | exports only `Ar*` |

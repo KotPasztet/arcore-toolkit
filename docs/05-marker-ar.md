@@ -73,6 +73,10 @@ with a 150 mm tag it is a few millimetres.
   can still be "detected" with a wrong pose.
 * Low-pass the pose (One Euro) — single-frame pose noise is visible as content
   jitter.
-* If you need smooth motion, track the tag corners with optical flow between
-  detections; detection at 10–20 Hz is not enough for 60 fps rendering.
+* A flat tag has **two valid PnP solutions**.  Evaluate both and pick the one
+  closest to the previous/predicted pose; otherwise the tag appears to flip
+  ±15° when it is nearly edge-on.
+* Run detection on a worker thread and always use the newest frame.  Detection
+  at 10–20 Hz is not enough for 60 fps rendering, but a blocked render thread is
+  worse: drop stale frames and predict between the remaining ones.
 * Keep exposure low: motion blur costs more accuracy than noise.

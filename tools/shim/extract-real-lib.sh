@@ -22,10 +22,17 @@ command -v patchelf >/dev/null || { echo "patchelf is required" >&2; exit 1; }
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+# Prefer libarcore_sdk_c_real.so: an already shimmed APK contains both our
+# wrapper (libarcore_sdk_c.so) and the real library under the _real name.
+# Extracting the wrapper by mistake would make the new shim dlopen itself.
 extracted=""
-for path in "jni/$ABI/libarcore_sdk_c.so" "lib/$ABI/libarcore_sdk_c.so"; do
+for path in \
+    "lib/$ABI/libarcore_sdk_c_real.so" \
+    "jni/$ABI/libarcore_sdk_c_real.so" \
+    "jni/$ABI/libarcore_sdk_c.so" \
+    "lib/$ABI/libarcore_sdk_c.so"; do
     if unzip -q -j "$SOURCE" "$path" -d "$TMP" 2>/dev/null; then
-        extracted="$TMP/libarcore_sdk_c.so"
+        extracted="$TMP/$(basename "$path")"
         break
     fi
 done

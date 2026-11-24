@@ -27,8 +27,9 @@ app APK  lib/arm64-v8a/
   header (`ArCoreApk_getSymbolTable`, `ArSession_createWithFeaturesAndTrace`).
 * `internal.S` is a trampoline for the second one.
 * `vers.map` exports only `Ar*`.
-* `overrides.inc` contains the hand-written overrides; `passthrough.inc` is the
-  empty variant.
+* `overrides.inc` contains the hand-written ARCore overrides and includes
+  `marker_tracking.inc` (detector worker, two-pose selection, filter,
+  prediction); `passthrough.inc` is the empty variant.
 
 The real library must have `SONAME = libarcore_sdk_c_real.so`, otherwise the
 dynamic linker resolves the name back to the shim.  `extract-real-lib.sh` does
@@ -65,9 +66,9 @@ install.
 
 | Function | Behaviour |
 |---|---|
-| `ArSession_update` | real update + AprilTag detection every other frame |
-| `ArCamera_getViewMatrix` / `ArCamera_getPose` | pose from the tag, with prediction between detections |
-| `ArCamera_getTrackingState` | `TRACKING` while the tag is visible, paused after 1 s without it |
+| `ArSession_update` | real update, then queues the camera Y plane for the marker worker (detection never blocks the GL thread) |
+| `ArCamera_getViewMatrix` / `ArCamera_getPose` | pose from the tag, filtered and predicted between detections |
+| `ArCamera_getTrackingState` | `TRACKING` while the tag is visible, paused after `hold_ms` (350 ms) without it |
 | `ArSession_getAllTrackables`, `ArTrackableList_*` | one synthetic plane when the tag is visible |
 | `ArPlane_getCenterPose/getExtent/GetType` | plane pose (identity in the Y-up world), 1 m extents, horizontal-upward |
 | `ArSession_acquireNewAnchor`, `ArAnchor_*` | static anchors |
@@ -76,14 +77,25 @@ install.
 | `ArFrame_acquirePointCloud` | empty cloud |
 | `ArSession_setDisplayGeometry` | remembered and used for the sensor→display rotation |
 
-The shim also does the small things that make tracking usable:
+The marker pipeline is built for low latency rather than for a clean laboratory
+sequence:
 
-* undistorts the tag corners with the calibrated distortion before `solvePnP`;
-* rejects detections with `hamming != 0` or a low `decision_margin`;
-* gates the reprojection error (`rms_px = sqrt(err/4)·fx`, default 2 px);
-* One Euro filter on position/rotation + outlier rejection;
-* predicts the pose between detections (`lead` gain) so the view matrix is smooth
-  at render rate.
+* detection runs on a **worker thread**; a slow frame is dropped instead of
+  stalling rendering (`tools/shim/marker_tracking.inc`);
+* `decimate` is adaptive (default `1 1`: full resolution for both tracking and
+  search); raise it if the worker cannot keep up with the camera;
+* the tag corners are undistorted with the calibrated distortion before PnP;
+* the two planar PnP solutions are **both evaluated**; the one closest to the
+  previous/predicted pose wins.  This is what stops the classic AprilTag
+  "pose flip" when the tag is viewed almost edge-on;
+* `hamming`, `decision_margin`, quad area and reprojection error gate the
+  candidates; a weak tag is accepted only when tracking was already lost;
+* one tag ID is locked while it is visible (`lock_tag=1`), so a second tag in
+  the scene cannot steal the pose;
+* One Euro filter on position/rotation plus constant-velocity prediction
+  (`lead`) keeps the view smooth and responsive at render rate;
+* after a short hold time (`hold_ms`, 350 ms) tracking pauses; the last pose is
+  kept instead of snapping the world to the origin.
 
 ## 5. Coordinate frames
 
@@ -110,13 +122,20 @@ The shim reads optional files from the target app's data directory
 | `freeze` | stop grabbing camera frames (A/B test) |
 | `dist`, `dist_off` | distortion coefficients / disable correction |
 | `tag_size` | printed black square, mm |
-| `margin`, `max_px`, `max_jump`, `max_ang` | detection gates |
-| `filter_off`, `euro` | disable / configure the One Euro filter |
-| `predict_off`, `lead` | disable / tune pose prediction |
-| `shim.log`, `trace.log` | events and every ARCore call (with thread id) |
+| `margin`, `hamming`, `min_area`, `max_px` | detection/candidate gates |
+| `max_jump`, `max_ang` | outlier rejection against the predicted pose |
+| `filter_off`, `euro` | disable / configure the One Euro filter (`f_min`, `beta_pos`, `beta_rot`) |
+| `predict_off`, `lead`, `predict_ms` | disable / tune pose prediction and its maximum extrapolation |
+| `hold_ms`, `reset_ms` | how long to keep tracking without a detection / when to reset the filter |
+| `decimate` | one or two numbers: tracking and search quad decimation (default `1 1`) |
+| `threads`, `refine` | AprilTag worker threads and edge refinement |
+| `tag_id`, `lock_tag` | pin a tag ID / keep the current tag while visible |
+| `shim.log` | events and 2-second tracking metrics |
+| `trace_on` | create this file to enable `trace.log`; tracing is off by default because it writes a line for every ARCore call |
 
-`trace.log` is the main debugging tool: the last line before a hang or crash is
-the call that never returned.
+`trace.log` is the main debugging tool when enabled: the last line before a hang
+or crash is the call that never returned.  Create an empty `trace_on` file next
+to `shim.log`, reproduce the problem, then remove it to restore performance.
 
 ## 7. Known pitfalls
 
@@ -132,15 +151,22 @@ the call that never returned.
 * **The real ARCore keeps running** (it supplies the camera image), so its VIO
   still costs CPU and battery.  A pass-through build is the way to use the real
   tracking when it works.
+* **Dropped frames** are normal: the worker always consumes the newest queued
+  frame.  A persistently high `drop=` in the metrics line means the detector is
+  slower than the camera; raise `decimate` or lower `threads` only after checking
+  that the tag is large enough.
 
 ## 8. Debugging workflow
 
 ```bash
 adb install -r app-shim.apk
-adb shell 'rm -f /sdcard/Android/data/<pkg>/files/{shim.log,trace.log}'
+adb shell 'rm -f /sdcard/Android/data/<pkg>/files/shim.log'
+# optional: enable per-call tracing while reproducing
+adb shell 'touch /sdcard/Android/data/<pkg>/files/trace_on'
 adb shell monkey -p <pkg> -c android.intent.category.LAUNCHER 1
 # reproduce, then:
 adb shell 'tail -40 /sdcard/Android/data/<pkg>/files/shim.log'
 adb shell 'tail -20 /sdcard/Android/data/<pkg>/files/trace.log'
+adb shell 'rm -f /sdcard/Android/data/<pkg>/files/trace_on'
 adb shell dumpsys activity exit-info <pkg>
 ```

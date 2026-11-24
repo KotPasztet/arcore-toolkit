@@ -49,6 +49,6 @@ SHIM_INC="$SHIM_INC" "$PY" gen_shim.py
     -I. -I"$APRILTAG" \
     -Wl,-soname,libarcore_sdk_c.so -Wl,--version-script=vers.map \
     -o "$OUT" shim.c internal.S "${APR_SOURCES[@]}" \
-    -ldl -llog -lm
+    -ldl -llog -lm -pthread
 
 ls -l "$OUT"
