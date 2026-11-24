@@ -95,6 +95,28 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private boolean recoveryShown;
 
+    private void showError(String title, String message) {
+        if (isFinishing() || isDestroyed()) return;
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton("Close", null)
+                    .show();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            recreate();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -354,7 +376,9 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             Toast.makeText(this, "Switch failed: " + t, Toast.LENGTH_LONG).show();
             return;
         }
-        ui.postDelayed(this::recreate, 6000);
+        ui.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed()) recreate();
+        }, 6000);
     }
 
     private void applyNamed(String name) {
@@ -379,7 +403,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     }
 
     private void showRecoveryDialog() {
-        if (recoveryShown) return;
+        if (recoveryShown || isFinishing() || isDestroyed()) return;
         recoveryShown = true;
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         final String spec = prefs.getString(PREF_LAST_GOOD_SPEC, "");
@@ -473,6 +497,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         }
         Toast.makeText(this, "Loading profiles...", Toast.LENGTH_SHORT).show();
         fetchCatalog((catalog, error) -> {
+            if (isFinishing() || isDestroyed()) return;
             if (error != null) {
                 new AlertDialog.Builder(this)
                         .setTitle("Profile server")
@@ -783,6 +808,10 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             }
             if (!a.isSupported()) {
                 Log.e(TAG, "ARCore not supported: " + a);
+                showError("ARCore is not available",
+                        "ARCore reports: " + a + "\n\n"
+                                + "Install/update Google Play Services for AR and a device profile, "
+                                + "then reopen this screen. See docs/02-profiles.md.");
                 return;
             }
             if (session == null) {
@@ -800,22 +829,42 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             markProfileWorking();
         } catch (com.google.ar.core.exceptions.FatalException fatal) {
             Log.e(TAG, "onResume FATAL: profile rejected", fatal);
-            if (session != null) {
-                try { session.close(); } catch (Throwable ignored) {}
-                session = null;
-            }
+            closeSessionQuietly();
+            showRecoveryDialog();
+        } catch (com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException incompatible) {
+            Log.e(TAG, "onResume incompatible device/profile", incompatible);
+            closeSessionQuietly();
             showRecoveryDialog();
         } catch (Throwable t) {
             Log.e(TAG, "onResume FAILED", t);
+            closeSessionQuietly();
+            showError("ARCore session failed", String.valueOf(t));
         }
-        surfaceView.onResume();
+        if (surfaceView != null) surfaceView.onResume();
+    }
+
+    private void closeSessionQuietly() {
+        if (session != null) {
+            try { session.close(); } catch (Throwable ignored) {}
+            session = null;
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (surfaceView != null) surfaceView.onPause();
-        if (session != null) session.pause();
+        try {
+            if (surfaceView != null) surfaceView.onPause();
+        } catch (Throwable t) {
+            Log.e(TAG, "surface pause failed", t);
+        }
+        if (session != null) {
+            try {
+                session.pause();
+            } catch (Throwable t) {
+                Log.e(TAG, "session pause failed", t);
+            }
+        }
         Log.i(TAG, "onPause");
     }
 
@@ -833,16 +882,20 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.i(TAG, "onSurfaceCreated");
-        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
-        background = new BackgroundRenderer();
-        background.createOnGlThread();
-        planeRenderer = new PlaneRenderer();
-        planeRenderer.createOnGlThread();
-        objectRenderer = new ObjectRenderer();
-        objectRenderer.createOnGlThread();
-        if (session != null) {
-            session.setCameraTextureName(background.getTextureId());
-            Log.i(TAG, "setCameraTextureName=" + background.getTextureId());
+        try {
+            GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
+            background = new BackgroundRenderer();
+            background.createOnGlThread();
+            planeRenderer = new PlaneRenderer();
+            planeRenderer.createOnGlThread();
+            objectRenderer = new ObjectRenderer();
+            objectRenderer.createOnGlThread();
+            if (session != null && background.getTextureId() != 0) {
+                session.setCameraTextureName(background.getTextureId());
+                Log.i(TAG, "setCameraTextureName=" + background.getTextureId());
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "GL setup failed", t);
         }
     }
 
@@ -850,8 +903,12 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         Log.i(TAG, "onSurfaceChanged " + width + "x" + height);
         GLES20.glViewport(0, 0, width, height);
-        if (session != null) {
-            session.setDisplayGeometry(getDisplayRotation(), width, height);
+        if (session != null && width > 0 && height > 0) {
+            try {
+                session.setDisplayGeometry(getDisplayRotation(), width, height);
+            } catch (Throwable t) {
+                Log.e(TAG, "setDisplayGeometry failed", t);
+            }
         }
     }
 

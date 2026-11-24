@@ -83,8 +83,13 @@ public class CalibrationActivity extends Activity
     private Handler backgroundHandler;
     private Size frameSize = new Size(1280, 960);
     private Range<Integer> fpsRange;
+    private Integer afMode;
+    private boolean oisOff;
+    private boolean vsOff;
     private String cameraId = "0";
     private int sensorOrientation = 90;
+    private boolean cameraFound;
+    private volatile boolean opening;
 
     private SensorManager sensorManager;
     private Sensor gyro;
@@ -241,6 +246,29 @@ public class CalibrationActivity extends Activity
                 .show();
     }
 
+    private static Integer chooseAfMode(CameraCharacteristics c) {
+        int[] modes = c.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
+        if (modes == null) return null;
+        int[] preferred = {
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE,
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO,
+                CaptureRequest.CONTROL_AF_MODE_AUTO,
+                CaptureRequest.CONTROL_AF_MODE_OFF
+        };
+        for (int p : preferred) {
+            for (int m : modes) if (m == p) return p;
+        }
+        return null;
+    }
+
+    private static boolean supports(CameraCharacteristics c,
+                                    CameraCharacteristics.Key<int[]> key, int value) {
+        int[] values = c.get(key);
+        if (values == null) return false;
+        for (int v : values) if (v == value) return true;
+        return false;
+    }
+
     private void selectCamera() {
         try {
             for (String id : cameraManager.getCameraIdList()) {
@@ -248,6 +276,7 @@ public class CalibrationActivity extends Activity
                 Integer facing = c.get(CameraCharacteristics.LENS_FACING);
                 if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
                     cameraId = id;
+                    cameraFound = true;
                     Integer so = c.get(CameraCharacteristics.SENSOR_ORIENTATION);
                     if (so != null) sensorOrientation = so;
                     StreamConfigurationMap map = c.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -255,17 +284,33 @@ public class CalibrationActivity extends Activity
                         Size[] sizes = map.getOutputSizes(ImageFormat.YUV_420_888);
                         Size preferred = null;
                         Size largest = null;
-                        for (Size s : sizes) {
-                            if (s.getWidth() > 1920 || s.getHeight() > 1440) continue;
-                            if (s.getWidth() * 3 != s.getHeight() * 4) continue; // 4:3
-                            if (s.getWidth() == 1280 && s.getHeight() == 960) preferred = s;
-                            if (largest == null || s.getWidth() * s.getHeight() > largest.getWidth() * largest.getHeight()) {
-                                largest = s;
+                        Size fallback = null;
+                        if (sizes != null) {
+                            for (Size s : sizes) {
+                                if (fallback == null || s.getWidth() * s.getHeight()
+                                        < fallback.getWidth() * fallback.getHeight()) {
+                                    fallback = s;
+                                }
+                                if (s.getWidth() > 1920 || s.getHeight() > 1440) continue;
+                                if (s.getWidth() * 3 != s.getHeight() * 4) continue; // 4:3
+                                if (s.getWidth() == 1280 && s.getHeight() == 960) preferred = s;
+                                if (largest == null || s.getWidth() * s.getHeight()
+                                        > largest.getWidth() * largest.getHeight()) {
+                                    largest = s;
+                                }
                             }
                         }
                         if (preferred != null) frameSize = preferred;
                         else if (largest != null) frameSize = largest;
+                        else if (fallback != null) frameSize = fallback;
                     }
+                    afMode = chooseAfMode(c);
+                    oisOff = supports(c,
+                            CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
+                            CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
+                    vsOff = supports(c,
+                            CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
+                            CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
                     Range<Integer>[] ranges = c.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
                     if (ranges != null) {
                         for (Range<Integer> r : ranges) {
@@ -286,6 +331,28 @@ public class CalibrationActivity extends Activity
             Log.e(TAG, "selectCamera failed", t);
         }
         Log.i(TAG, "camera=" + cameraId + " frame=" + frameSize + " orientation=" + sensorOrientation);
+        if (!cameraFound) {
+            Toast.makeText(this, "Задняя камера не найдена", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (preview != null && preview.isAvailable()
+                && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        }
     }
 
     @Override
@@ -305,8 +372,17 @@ public class CalibrationActivity extends Activity
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
 
     private void openCamera() {
-        if (cameraDevice != null) return;
+        if (cameraDevice != null || opening) return;
+        if (!cameraFound) {
+            Toast.makeText(this, "Задняя камера не найдена", Toast.LENGTH_LONG).show();
+            return;
+        }
+        opening = true;
         try {
+            if (imageReader != null) {
+                imageReader.close();
+                imageReader = null;
+            }
             imageReader = ImageReader.newInstance(frameSize.getWidth(), frameSize.getHeight(),
                     ImageFormat.YUV_420_888, 4);
             imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
@@ -317,29 +393,34 @@ public class CalibrationActivity extends Activity
             }, backgroundHandler);
 
             if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                opening = false;
                 return;
             }
             cameraManager.openCamera(cameraId, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice camera) {
+                    opening = false;
                     cameraDevice = camera;
                     createSession();
                 }
 
                 @Override
                 public void onDisconnected(CameraDevice camera) {
+                    opening = false;
                     camera.close();
                     cameraDevice = null;
                 }
 
                 @Override
                 public void onError(CameraDevice camera, int error) {
+                    opening = false;
                     Log.e(TAG, "camera error " + error);
                     camera.close();
                     cameraDevice = null;
                 }
             }, backgroundHandler);
         } catch (Throwable t) {
+            opening = false;
             Log.e(TAG, "openCamera failed", t);
             Toast.makeText(this, "Камера недоступна: " + t, Toast.LENGTH_LONG).show();
         }
@@ -361,13 +442,20 @@ public class CalibrationActivity extends Activity
                         b.addTarget(previewSurface);
                         b.addTarget(imageReader.getSurface());
                         b.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
-                        b.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                        if (afMode != null) {
+                            b.set(CaptureRequest.CONTROL_AF_MODE, afMode);
+                        }
                         if (fpsRange != null) {
                             b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange);
-                        }                        b.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                                CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
-                        b.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+                        }
+                        if (oisOff) {
+                            b.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
+                        }
+                        if (vsOff) {
+                            b.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+                        }
                         session.setRepeatingRequest(b.build(), null, backgroundHandler);
                         Log.i(TAG, "session configured " + frameSize + " fps=30");
                     } catch (Throwable t) {
@@ -378,6 +466,8 @@ public class CalibrationActivity extends Activity
                 @Override
                 public void onConfigureFailed(CameraCaptureSession session) {
                     Log.e(TAG, "session configure failed");
+                    try { cameraDevice.close(); } catch (Throwable ignored) {}
+                    cameraDevice = null;
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -542,15 +632,24 @@ public class CalibrationActivity extends Activity
     @Override
     protected void onPause() {
         super.onPause();
+        opening = false;
         if (recording) stopRecording();
-        if (cameraDevice != null) {
-            cameraDevice.close();
-            cameraDevice = null;
-        }
-        if (captureSession != null) {
-            captureSession.close();
-            captureSession = null;
-        }
+        try {
+            if (captureSession != null) captureSession.close();
+        } catch (Throwable ignored) {}
+        captureSession = null;
+        try {
+            if (cameraDevice != null) cameraDevice.close();
+        } catch (Throwable ignored) {}
+        cameraDevice = null;
+        try {
+            if (imageReader != null) imageReader.close();
+        } catch (Throwable ignored) {}
+        imageReader = null;
+        try {
+            if (previewSurface != null) previewSurface.release();
+        } catch (Throwable ignored) {}
+        previewSurface = null;
     }
 
     @Override

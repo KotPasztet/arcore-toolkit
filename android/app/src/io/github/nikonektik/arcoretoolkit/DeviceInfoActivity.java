@@ -134,8 +134,13 @@ public class DeviceInfoActivity extends Activity {
     }
 
     private void copyToClipboard() {
-        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        cm.setPrimaryClip(ClipData.newPlainText("device info", summary));
-        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null) return;
+            cm.setPrimaryClip(ClipData.newPlainText("device info", summary));
+            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+        } catch (Throwable t) {
+            Toast.makeText(this, "Copy failed: " + t, Toast.LENGTH_SHORT).show();
+        }
     }
 }

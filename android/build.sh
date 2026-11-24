@@ -18,6 +18,9 @@ AR_VERSION=${AR_VERSION:-1.57.0}
 OPENCV_VERSION=${OPENCV_VERSION:-4.9.0}
 OUT=${OUT:-arcore-toolkit.apk}
 KS=${KS:-debug.keystore}
+# Build all ABI directories shipped by the ARCore/OpenCV AARs by default.
+# Override with e.g. ABIS=arm64-v8a to keep the APK small.
+ABIS=${ABIS:-"arm64-v8a armeabi-v7a x86 x86_64"}
 
 AR_AAR="https://dl.google.com/dl/android/maven2/com/google/ar/core/${AR_VERSION}/core-${AR_VERSION}.aar"
 CV_AAR="https://repo1.maven.org/maven2/org/opencv/opencv/${OPENCV_VERSION}/opencv-${OPENCV_VERSION}.aar"
@@ -26,7 +29,7 @@ for path in "$BT/aapt2" "$BT/d8" "$BT/apksigner" "$BT/zipalign" "$ANDROID_JAR"; 
     [ -e "$path" ] || { echo "missing: $path" >&2; exit 1; }
 done
 
-mkdir -p deps build/lib/arm64-v8a
+mkdir -p deps
 
 fetch() {
     [ -f "$2" ] || curl -fsSL "$1" -o "$2"
@@ -34,8 +37,9 @@ fetch() {
 fetch "$AR_AAR" "deps/arcore-$AR_VERSION.aar"
 fetch "$CV_AAR" "deps/opencv-$OPENCV_VERSION.aar"
 
-rm -rf build/deps build/classes build/dex build/base.apk build/aligned.apk build/classes.dex
-mkdir -p build/deps/arcore build/deps/opencv build/classes build/dex
+rm -rf build/deps build/classes build/dex build/lib build/base.apk build/aligned.apk build/classes.dex
+mkdir -p build/deps/arcore build/deps/opencv build/classes build/dex build/lib
+for abi in $ABIS; do mkdir -p "build/lib/$abi"; done
 unzip -q -o "deps/arcore-$AR_VERSION.aar" -d build/deps/arcore
 unzip -q -o "deps/opencv-$OPENCV_VERSION.aar" -d build/deps/opencv
 
@@ -52,12 +56,40 @@ find build/classes -name '*.class' > build/classes.txt
     --version-code 1 --version-name 0.1.0
 
 cp build/dex/classes.dex build/classes.dex
-cp build/deps/arcore/jni/arm64-v8a/*.so build/lib/arm64-v8a/
-cp build/deps/opencv/jni/arm64-v8a/libopencv_java4.so build/lib/arm64-v8a/
-if [ -f "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" ]; then
-    cp "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" \
-       build/lib/arm64-v8a/
-fi
+
+abi_triplet() {
+    case "$1" in
+        arm64-v8a)   echo aarch64-linux-android ;;
+        armeabi-v7a) echo arm-linux-androideabi ;;
+        x86)         echo i686-linux-android ;;
+        x86_64)      echo x86_64-linux-android ;;
+        *)           echo "" ;;
+    esac
+}
+
+for abi in $ABIS; do
+    [ -d "build/deps/arcore/jni/$abi" ] || {
+        echo "warning: ARCore has no $abi binaries, skipping" >&2
+        continue
+    }
+    cp build/deps/arcore/jni/"$abi"/*.so build/lib/"$abi"/
+    if [ -f "build/deps/opencv/jni/$abi/libopencv_java4.so" ]; then
+        cp build/deps/opencv/jni/"$abi"/libopencv_java4.so build/lib/"$abi"/
+    else
+        echo "warning: OpenCV has no $abi binaries, skipping" >&2
+        rm -rf build/lib/"$abi"
+        continue
+    fi
+    # Use the libc++_shared.so shipped with the AAR when available: it matches
+    # the OpenCV build.  Fall back to the NDK sysroot for older AARs.
+    if [ -f "build/deps/opencv/jni/$abi/libc++_shared.so" ]; then
+        cp build/deps/opencv/jni/"$abi"/libc++_shared.so build/lib/"$abi"/
+    else
+        triplet=$(abi_triplet "$abi")
+        src="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$triplet/libc++_shared.so"
+        [ -n "$triplet" ] && [ -f "$src" ] && cp "$src" build/lib/"$abi"/
+    fi
+done
 
 (cd build && zip -q -u base.apk classes.dex && zip -q -r -u base.apk lib)
 

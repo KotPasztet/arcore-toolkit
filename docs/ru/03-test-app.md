@@ -121,7 +121,7 @@ adb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib > cali
 2. `javac` (Java 8) против `android.jar` + AAR;
 3. `d8` → `classes.dex` (библиотечные классы тоже включаются);
 4. `aapt2 link` → базовый APK;
-5. добавляет `classes.dex` и нативные библиотеки arm64-v8a;
+5. добавляет `classes.dex` и нативные библиотеки для выбранных ABI;
 6. `zipalign` + `apksigner` со сгенерированным debug-ключом.
 
 Переменные: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT`, `AR_VERSION`,

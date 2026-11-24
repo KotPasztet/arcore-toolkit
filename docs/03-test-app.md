@@ -140,11 +140,12 @@ adb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib > cali
 6. `zipalign` + `apksigner` with a generated debug keystore.
 
 Environment overrides: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT`, `AR_VERSION`,
-`OPENCV_VERSION`, `OUT`, `KS`.
+`OPENCV_VERSION`, `OUT`, `KS`, `ABIS`.
 
 ## Notes
 
-* The app is arm64-v8a only.  Add other ABIs by copying the matching `jni`
-  folders in `build.sh`.
+* By default the APK contains `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`
+  libraries, so it also runs on 32-bit phones and emulators.  Use
+  `ABIS=arm64-v8a ./build.sh` to keep the download small.
 * The UI is Russian/English mixed — the author's working language; the strings
   are plain Java, easy to localise.
