@@ -135,3 +135,27 @@ def test_extract_from_assets(tmp_path):
     assert out == blob
     with pytest.raises(KeyError):
         core.extract_from_assets(str(tmp_path), ["not-a-device"])
+
+
+def test_catalog_closest():
+    from arcore_profile import catalog
+
+    items = [
+        {"name": "a", "fx": 400.0, "fy": 400.0},
+        {"name": "b", "fx": 465.0, "fy": 464.0},
+        {"name": "c", "fx": 500.0, "fy": 500.0},
+    ]
+    assert catalog.closest(items, 464.0)["name"] == "b"
+    assert catalog.closest(items, 502.0)["name"] == "c"
+    assert catalog.closest([], 460.0) is None
+
+
+def test_profile_info(tmp_path):
+    from arcore_profile import catalog
+
+    path = tmp_path / "p.pb"
+    path.write_bytes(synthetic_profile())
+    info = catalog.profile_info("test", str(path))
+    assert info["name"] == "test"
+    assert info["fx"] == 500.0
+    assert info["cx"] == 320.0

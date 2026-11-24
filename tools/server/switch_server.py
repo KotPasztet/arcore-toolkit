@@ -44,9 +44,11 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 try:
+    from arcore_profile import catalog as profile_catalog
     from arcore_profile import core
 except ImportError:  # running from a checkout without `pip install -e .`
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+    from arcore_profile import catalog as profile_catalog
     from arcore_profile import core
 
 DEFAULTS = {
@@ -94,6 +96,17 @@ class ProfileStore:
             return None
         with open(path, "rb") as fh:
             return fh.read()
+
+    def catalog(self) -> list[dict]:
+        out = []
+        for name in self.config["profiles"]:
+            path = self.find(name)
+            if not path:
+                continue
+            info = profile_catalog.profile_info(name, path)
+            if info:
+                out.append(info)
+        return out
 
     def keys_for(self, name: str, devices, keys) -> list[str]:
         if keys:
@@ -163,6 +176,12 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path in ("/", "/healthz"):
             self._json(200, {"status": "ok"})
+            return
+        if parsed.path in ("/arcore/profiles", "/arcore/switch/profiles"):
+            self._json(200, {
+                "profiles": self.store.catalog(),
+                "default_key": self.store.config.get("default_key", "pADuJF"),
+            })
             return
         match = re.match(
             r"^/arcore/switch/([A-Za-z0-9_.-]+)/([0-9]+(?:\.[0-9]+){1,3})\.zip$",

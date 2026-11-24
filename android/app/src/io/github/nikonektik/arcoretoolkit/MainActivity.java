@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.opengl.GLES20;
@@ -15,6 +16,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -44,9 +46,18 @@ import com.google.ar.core.Session;
 import com.google.ar.core.Trackable;
 import com.google.ar.core.TrackingState;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -71,30 +82,16 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private volatile String lastTracking = "-";
     private volatile int lastPlanes = 0;
     private int placed = 0;
-    private Spinner profileSpinner;
-
     private static final String PREFS = "arcoretoolkit";
-    private static final String PREF_PROFILE = "profile";
     private static final String PREF_SERVER = "server";
-    private static final String[] PROFILE_LABELS = {
-            "chopin patched (best)",
-            "marble (POCO F5)",
-            "chopin (POCO X3 GT)",
-            "vayu (POCO X3 Pro)",
-            "alioth (POCO F3)",
-            "sweet (Redmi Note 10 Pro)",
-            "flame (Pixel 4)",
-            "rs_source=2",
-            "tsalign=0",
-            "timebase=2",
-            "depth=1",
-            "extr inverse",
-            "generic IMU"
-    };
-    private static final String[] PROFILE_KEYS = {
-            "chopin_patched", "marble", "chopin", "vayu", "alioth", "sweet", "flame",
-            "rs2", "tsa0", "tb2", "depth1", "extr", "genericimu"
-    };
+    private static final String PREF_LABEL = "label";
+    private static final String PREF_PENDING_SPEC = "pending_spec";
+    private static final String PREF_PENDING_LABEL = "pending_label";
+    private static final String PREF_LAST_GOOD_SPEC = "last_good_spec";
+    private static final String PREF_LAST_GOOD_LABEL = "last_good_label";
+
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private boolean recoveryShown;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,41 +138,9 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         controls.setPadding(32, 16, 32, 48);
         controls.setBackgroundColor(0xAA000000);
 
-        profileSpinner = new Spinner(this);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, PROFILE_LABELS);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        profileSpinner.setAdapter(adapter);
-        String savedKey = getSharedPreferences(PREFS, MODE_PRIVATE)
-                .getString(PREF_PROFILE, "chopin_patched");
-        for (int i = 0; i < PROFILE_KEYS.length; i++) {
-            if (PROFILE_KEYS[i].equals(savedKey)) {
-                profileSpinner.setSelection(i);
-                break;
-            }
-        }
-
-        Button apply = new Button(this);
-        apply.setText("Apply profile & restart");
-        apply.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                applyProfile();
-            }
-        });
-
-        Button tune = new Button(this);
-        tune.setText("Custom tune...");
-        tune.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showTuneDialog();
-            }
-        });
-
-        Button server = new Button(this);
-        server.setText("Profile server...");
-        server.setOnClickListener(v -> editServer());
+        Button profiles = new Button(this);
+        profiles.setText("Profiles...");
+        profiles.setOnClickListener(v -> showProfilesDialog());
 
         Button device = new Button(this);
         device.setText("Device info / intrinsics");
@@ -183,27 +148,16 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 startActivity(new Intent(MainActivity.this, DeviceInfoActivity.class)));
 
         Button marker = new Button(this);
-        marker.setText("Marker AR (прототип)");
-        marker.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, MarkerActivity.class));
-            }
-        });
+        marker.setText("Marker AR");
+        marker.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, MarkerActivity.class)));
 
         Button calib = new Button(this);
-        calib.setText("Калибровка (Kalibr)");
-        calib.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, CalibrationActivity.class));
-            }
-        });
+        calib.setText("Calibration (Kalibr)");
+        calib.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, CalibrationActivity.class)));
 
-        controls.addView(profileSpinner);
-        controls.addView(apply);
-        controls.addView(tune);
-        controls.addView(server);
+        controls.addView(profiles);
         controls.addView(device);
         controls.addView(marker);
         controls.addView(calib);
@@ -304,17 +258,11 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     }
 
     private String currentProfileLabel() {
-        String key = getSharedPreferences(PREFS, MODE_PRIVATE)
-                .getString(PREF_PROFILE, "chopin_patched");
-        if ("custom".equals(key)) {
-            return "Custom tune";
-        }
-        for (int i = 0; i < PROFILE_KEYS.length; i++) {
-            if (PROFILE_KEYS[i].equals(key)) {
-                return PROFILE_LABELS[i];
-            }
-        }
-        return key;
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String pending = prefs.getString(PREF_PENDING_LABEL, "");
+        if (!pending.isEmpty()) return pending + " (applying)";
+        String label = prefs.getString(PREF_LABEL, "");
+        return label.isEmpty() ? "-" : label;
     }
 
     private String serverBase() {
@@ -344,91 +292,323 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 .show();
     }
 
-    private void applyProfile() {
-        int idx = profileSpinner.getSelectedItemPosition();
-        if (idx < 0 || idx >= PROFILE_KEYS.length) {
-            return;
+    private String nextVersion() {
+        return arcoreVersionBase() + (System.currentTimeMillis() / 1000L);
+    }
+
+    private String arcoreVersionBase() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo("com.google.ar.core", 0);
+            if (info.versionName != null) {
+                String[] parts = info.versionName.split("\\.");
+                if (parts.length >= 2) return parts[0] + "." + parts[1] + ".";
+            }
+        } catch (Throwable ignored) {
         }
-        String key = PROFILE_KEYS[idx];
+        return "1.57.";
+    }
+
+    private String urlFor(String spec) {
         String base = serverBase();
-        if (base.isEmpty()) {
+        if (base.isEmpty() || spec == null) return null;
+        if (spec.startsWith("name:")) {
+            return base + spec.substring("name:".length()) + "/" + nextVersion() + ".zip";
+        }
+        if (spec.startsWith("custom:")) {
+            return base + "custom/" + nextVersion() + ".zip?" + spec.substring("custom:".length());
+        }
+        return null;
+    }
+
+    private void applySpec(String spec, String label) {
+        String url = urlFor(spec);
+        if (url == null) {
             Toast.makeText(this, "Set the profile server first", Toast.LENGTH_LONG).show();
             editServer();
             return;
         }
-        String url = base + key + "/" + nextVersion() + ".zip";
-        triggerProfile(url, key, PROFILE_LABELS[idx]);
-    }
-
-    private String nextVersion() {
-        return "1.57." + (System.currentTimeMillis() / 1000L);
-    }
-
-    private void triggerProfile(String url, String prefsKey, String label) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(PREF_PROFILE, prefsKey).apply();
-        Log.i(TAG, "SWITCH profile=" + prefsKey + " url=" + url);
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putString(PREF_PENDING_SPEC, spec)
+                .putString(PREF_PENDING_LABEL, label)
+                .apply();
+        recoveryShown = false;
+        Log.i(TAG, "APPLY " + label + " -> " + url);
         Toast.makeText(this, "Applying " + label + "...", Toast.LENGTH_SHORT).show();
         try {
             Intent intent = new Intent();
             intent.setClassName("com.google.ar.core",
                     "com.google.ar.core.services.profiles.ProfileDownloadActivity");
             intent.putExtra("explicit-download-url", url);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         } catch (Throwable t) {
             Log.e(TAG, "switch failed", t);
             Toast.makeText(this, "Switch failed: " + t, Toast.LENGTH_LONG).show();
             return;
         }
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                recreate();
-            }
-        }, 6000);
+        ui.postDelayed(this::recreate, 6000);
     }
 
-    private void showTuneDialog() {
+    private void applyNamed(String name) {
+        applySpec("name:" + name, name);
+    }
+
+    private void applyCustom(String query) {
+        applySpec("custom:" + query, "Custom tune");
+    }
+
+    private void markProfileWorking() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String spec = prefs.getString(PREF_PENDING_SPEC, "");
+        if (spec.isEmpty()) return;
+        prefs.edit()
+                .putString(PREF_LAST_GOOD_SPEC, spec)
+                .putString(PREF_LAST_GOOD_LABEL, prefs.getString(PREF_PENDING_LABEL, ""))
+                .putString(PREF_LABEL, prefs.getString(PREF_PENDING_LABEL, ""))
+                .remove(PREF_PENDING_SPEC)
+                .remove(PREF_PENDING_LABEL)
+                .apply();
+    }
+
+    private void showRecoveryDialog() {
+        if (recoveryShown) return;
+        recoveryShown = true;
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        final String spec = prefs.getString(PREF_LAST_GOOD_SPEC, "");
+        final String label = prefs.getString(PREF_LAST_GOOD_LABEL, "last working profile");
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle("Profile rejected by ARCore")
+                .setMessage("ARCore created the session but could not start the camera with this profile. "
+                        + "It probably belongs to a phone with a different camera configuration.")
+                .setNeutralButton("Profiles...", (d, w) -> showProfilesDialog())
+                .setNegativeButton("Close", null);
+        if (!spec.isEmpty()) {
+            builder.setPositiveButton("Re-apply " + label, (d, w) -> applySpec(spec, label));
+        }
+        builder.show();
+    }
+
+    private static final class ProfileEntry {
+        String name;
+        double fx;
+        double fy;
+        double cx;
+        double cy;
+
+        @Override
+        public String toString() {
+            return String.format(Locale.US, "%s  (fx %.1f)", name, fx);
+        }
+    }
+
+    private static String profileKey(String device) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(new byte[]{0x0c, (byte) 0xe8, (byte) 0x8d, 0x52, 0x6f, (byte) 0xb7, 0x40, (byte) 0xd7});
+            byte[] digest = md.digest(device.getBytes("UTF-8"));
+            return Base64.encodeToString(digest,
+                    Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING).substring(0, 6);
+        } catch (Throwable t) {
+            return "?";
+        }
+    }
+
+    private interface CatalogCallback {
+        void onCatalog(List<ProfileEntry> catalog, String error);
+    }
+
+    private void fetchCatalog(final CatalogCallback callback) {
+        final String base = serverBase();
+        if (base.isEmpty()) {
+            callback.onCatalog(null, "no server configured");
+            return;
+        }
+        new Thread(() -> {
+            List<ProfileEntry> out = new ArrayList<>();
+            String error = null;
+            try {
+                HttpURLConnection conn = (HttpURLConnection) new URL(base + "profiles").openConnection();
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
+                int code = conn.getResponseCode();
+                if (code != 200) throw new RuntimeException("HTTP " + code);
+                StringBuilder body = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) body.append(line);
+                }
+                JSONArray array = new JSONObject(body.toString()).getJSONArray("profiles");
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject item = array.getJSONObject(i);
+                    ProfileEntry entry = new ProfileEntry();
+                    entry.name = item.getString("name");
+                    entry.fx = item.optDouble("fx", 0);
+                    entry.fy = item.optDouble("fy", 0);
+                    entry.cx = item.optDouble("cx", 320);
+                    entry.cy = item.optDouble("cy", 240);
+                    out.add(entry);
+                }
+            } catch (Throwable t) {
+                error = t.toString();
+            }
+            final List<ProfileEntry> result = out;
+            final String failure = error;
+            ui.post(() -> callback.onCatalog(result, failure));
+        }).start();
+    }
+
+    private void showProfilesDialog() {
+        if (serverBase().isEmpty()) {
+            editServer();
+            return;
+        }
+        Toast.makeText(this, "Loading profiles...", Toast.LENGTH_SHORT).show();
+        fetchCatalog((catalog, error) -> {
+            if (error != null) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Profile server")
+                        .setMessage("Cannot load the profile list:\n" + error)
+                        .setPositiveButton("Server URL...", (d, w) -> editServer())
+                        .setNegativeButton("Close", null)
+                        .show();
+                return;
+            }
+            if (catalog == null || catalog.isEmpty()) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Profile server")
+                        .setMessage("The server returned no profiles.")
+                        .setPositiveButton("Server URL...", (d, w) -> editServer())
+                        .setNegativeButton("Close", null)
+                        .show();
+                return;
+            }
+            buildProfilesDialog(catalog);
+        });
+    }
+
+    private void buildProfilesDialog(final List<ProfileEntry> catalog) {
+        CameraSpec camera = CameraSpec.read(this);
+        final ProfileEntry nearest = camera != null && camera.valid()
+                ? closestEntry(catalog, camera.fx(), camera.fy()) : null;
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(48, 24, 48, 24);
+
+        TextView info = new TextView(this);
+        String text = "Server: " + serverBase() + "\n"
+                + "Device: " + android.os.Build.DEVICE
+                + "  key: " + profileKey(android.os.Build.DEVICE);
+        if (camera != null && camera.valid()) {
+            text += String.format(Locale.US, "\nCamera: fx %.1f, fy %.1f", camera.fx(), camera.fy());
+        }
+        info.setText(text);
+        info.setTextSize(12f);
+        box.addView(info);
+
+        Button auto = new Button(this);
+        auto.setText("Auto: match this camera");
+        auto.setOnClickListener(v -> autoConfigure(catalog));
+        box.addView(auto);
+
+        Button advanced = new Button(this);
+        advanced.setText("Advanced tuning...");
+        advanced.setOnClickListener(v -> showTuneDialog(catalog));
+        box.addView(advanced);
+
+        Button server = new Button(this);
+        server.setText("Server URL...");
+        server.setOnClickListener(v -> editServer());
+        box.addView(server);
+
+        for (ProfileEntry entry : catalog) {
+            Button button = new Button(this);
+            button.setAllCaps(false);
+            button.setText(entry == nearest ? entry + "  \u2605" : entry.toString());
+            button.setOnClickListener(v -> applyNamed(entry.name));
+            box.addView(button);
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        new AlertDialog.Builder(this)
+                .setTitle("Profiles")
+                .setView(scroll)
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private static ProfileEntry closestEntry(List<ProfileEntry> catalog, float fx, float fy) {
+        ProfileEntry best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (ProfileEntry entry : catalog) {
+            if (entry.fx <= 0) continue;
+            double score = Math.abs(entry.fx - fx) / fx + Math.abs(entry.fy - fy) / fy;
+            if (score < bestScore) {
+                bestScore = score;
+                best = entry;
+            }
+        }
+        return best;
+    }
+
+    private void autoConfigure(List<ProfileEntry> catalog) {
+        CameraSpec camera = CameraSpec.read(this);
+        if (camera == null || !camera.valid()) {
+            Toast.makeText(this, "Camera characteristics unavailable", Toast.LENGTH_LONG).show();
+            return;
+        }
+        ProfileEntry base = closestEntry(catalog, camera.fx(), camera.fy());
+        if (base == null) {
+            Toast.makeText(this, "The server returned no usable profiles", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String query = "base=" + base.name + String.format(Locale.US,
+                "&fx=%.2f&fy=%.2f&cx=320&cy=240&dev=%s",
+                camera.fx(), camera.fy(), android.os.Build.DEVICE);
+        Toast.makeText(this, String.format(Locale.US, "Closest: %s (fx %.1f) -> %.1f",
+                base.name, base.fx, camera.fx()), Toast.LENGTH_LONG).show();
+        applySpec("custom:" + query, "Auto (" + base.name + ")");
+    }
+
+    private void showTuneDialog(final List<ProfileEntry> catalog) {
+        if (catalog == null || catalog.isEmpty()) {
+            Toast.makeText(this, "No profiles loaded", Toast.LENGTH_LONG).show();
+            return;
+        }
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(48, 24, 48, 24);
         box.setBackgroundColor(Color.WHITE);
 
         TextView hint = new TextView(this);
-        hint.setText("Меняйте по одному параметру за раз. После «Применить» профиль "
-                + "пересобирается на сервере, а ARCore перезапускается. "
-                + "Пресеты заполняют поля готовыми наборами — дальше можно править вручную.");
+        hint.setText("Пустое поле — оставить значение базового профиля. "
+                + "После «Применить» профиль пересобирается на сервере, а ARCore перезапускается.");
         hint.setTextColor(Color.DKGRAY);
         hint.setTextSize(12f);
         hint.setPadding(0, 0, 0, 12);
         box.addView(hint);
 
         TextView baseHint = new TextView(this);
-        baseHint.setText("Быстрый тест базы профиля (камера X6 Pro, лучшая синхронизация):");
+        baseHint.setText("Base profile (donor):");
         baseHint.setTextColor(Color.DKGRAY);
         baseHint.setTextSize(12f);
         baseHint.setPadding(0, 0, 0, 4);
         box.addView(baseHint);
 
+        final List<String> baseNames = new ArrayList<>();
+        List<String> baseLabels = new ArrayList<>();
+        for (ProfileEntry entry : catalog) {
+            baseNames.add(entry.name);
+            baseLabels.add(entry.toString());
+        }
         final Spinner baseSpinner = new Spinner(this);
         ArrayAdapter<String> baseAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item,
-                new String[]{"chopin", "marble", "vayu", "sweet", "flame", "alioth"});
+                android.R.layout.simple_spinner_item, baseLabels);
         baseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         baseSpinner.setAdapter(baseAdapter);
         box.addView(baseSpinner);
-
-        Button applyBase = new Button(this);
-        applyBase.setText("Применить базу");
-        applyBase.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String b = String.valueOf(baseSpinner.getSelectedItem());
-                applyCustom("base=" + b + "&keep_extr=1&keep_imu=1"
-                        + "&fx=464.56&fy=464.56&cx=320&cy=240&k0=0.001&k1=0&k2=0"
-                        + "&rs=26763333&tsa=-20000000&tb=2&rss=1&depth=2");
-            }
-        });
-        box.addView(applyBase);
 
         addHeader(box, "Камера (640×480)");
         final EditText fx = addField(box, "focal x", "464.56",
@@ -441,7 +621,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         final EditText cy = addField(box, "principal y", "240",
                 "Главная точка по Y. Паспортное значение — 240.");
         final EditText k0 = addField(box, "distortion k0", "0.001",
-                "Радиальная дисторсия k0. У X6 Pro почти ноль.");
+                "Радиальная дисторсия k0. Обычно около нуля.");
         final EditText k1 = addField(box, "distortion k1", "0",
                 "Дисторсия k1. Обычно 0; большие значения ломают трекинг.");
         final EditText k2 = addField(box, "distortion k2", "0",
@@ -506,39 +686,6 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         final EditText depth = addField(box, "depth mode (1/2)", "2",
                 "Depth API: 1 — выключен, 2 — включён. Плоскости используют ML-глубину.");
 
-        Button best = new Button(this);
-        best.setText("Пресет: лучший (viotune + pzero)");
-        best.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                fx.setText("464.56"); fy.setText("464.56"); cx.setText("320"); cy.setText("240");
-                k0.setText("0.001"); k1.setText("0"); k2.setText("0");
-                rs.setText("26763333"); tsa.setText("-20000000"); tb.setText("2"); rss.setText("1");
-                px.setText("0"); py.setText("0"); pz.setText("0");
-                qw.setText("0.0015"); qx.setText("-0.7059"); qy.setText("0.7083"); qz.setText("-0.0011");
-                gsx.setText("1.0286"); gsy.setText("1.0151"); gsz.setText("1.0020");
-                asx.setText("1"); asy.setText("1"); asz.setText("1");
-                gn.setText("0.0005309"); an.setText("0.0048836");
-                gbx.setText("0.0046"); gby.setText("-0.0022"); gbz.setText("0.0015");
-                depth.setText("2");
-            }
-        });
-        box.addView(best, 1);
-
-        Button chopin = new Button(this);
-        chopin.setText("Пресет: chopin (эталон)");
-        chopin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                rs.setText("31826666"); tsa.setText("3733333"); tb.setText("1"); rss.setText("1");
-                px.setText("0.0201"); py.setText("0.0054"); pz.setText("-0.0021");
-                gsx.setText("1"); gsy.setText("1"); gsz.setText("1");
-                gn.setText("0.000101"); an.setText("0.002942");
-                gbx.setText("0"); gby.setText("0"); gbz.setText("0");
-            }
-        });
-        box.addView(chopin, 2);
-
         Button zero = new Button(this);
         zero.setText("Пресет: без сдвига времени (tsa=0)");
         zero.setOnClickListener(new View.OnClickListener() {
@@ -558,7 +705,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 .setPositiveButton("Применить", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        String q = "fx=" + val(fx) + "&fy=" + val(fy)
+                        String q = "base=" + baseNames.get(baseSpinner.getSelectedItemPosition())
+                                + "&fx=" + val(fx) + "&fy=" + val(fy)
                                 + "&cx=" + val(cx) + "&cy=" + val(cy)
                                 + "&k0=" + val(k0) + "&k1=" + val(k1) + "&k2=" + val(k2)
                                 + "&rs=" + val(rs) + "&tsa=" + val(tsa)
@@ -612,17 +760,6 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         return e.getText().toString().trim().replace(',', '.');
     }
 
-    private void applyCustom(String query) {
-        String base = serverBase();
-        if (base.isEmpty()) {
-            Toast.makeText(this, "Set the profile server first", Toast.LENGTH_LONG).show();
-            editServer();
-            return;
-        }
-        String url = base + "custom/" + nextVersion() + ".zip?" + query;
-        triggerProfile(url, "custom", "Custom tune");
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -652,6 +789,14 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             }
             session.resume();
             Log.i(TAG, "SESSION_RESUMED_OK");
+            markProfileWorking();
+        } catch (com.google.ar.core.exceptions.FatalException fatal) {
+            Log.e(TAG, "onResume FATAL: profile rejected", fatal);
+            if (session != null) {
+                try { session.close(); } catch (Throwable ignored) {}
+                session = null;
+            }
+            showRecoveryDialog();
         } catch (Throwable t) {
             Log.e(TAG, "onResume FAILED", t);
         }

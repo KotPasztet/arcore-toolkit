@@ -5,21 +5,62 @@
 ## AR test (main screen)
 
 * Full-screen `GLSurfaceView` with the ARCore camera texture as background.
-* HUD: availability, session state, `Tracking`, number of planes, number of
-  anchors, active profile.
+* HUD: tracking state, number of planes, number of anchors, active profile.
 * Tap places an object: plane hit-test → instant placement → fixed pose 1 m in
   front of the camera (fallback so you can test without planes).
-* Controls:
+* Four buttons:
 
 | Control | What it does |
 |---|---|
-| profile spinner | selects a named profile on the server |
-| **Apply profile & restart** | downloads `‹server›/<name>/1.57.<unix>.zip` through `ProfileDownloadActivity` and restarts the activity |
-| **Custom tune...** | dialog with every profile field (intrinsics, distortion, rolling shutter, timestamps, depth, IMU scales/noise/bias) + presets + quick base test |
-| **Profile server...** | sets the base URL (stored in shared preferences; empty by default) |
-| **Device info / intrinsics** | see below |
+| **Profiles...** | profile browser (see below) |
+| **Device info / intrinsics** | camera and IMU report, computed fx/fy |
 | **Marker AR** | AprilTag prototype (Camera2 + OpenCV) |
 | **Calibration** | camera + IMU recorder for Kalibr |
+
+### Profiles dialog
+
+Opened with **Profiles...**; it fetches the catalogue from the server
+(`GET <base>profiles`, see [02-profiles.md](02-profiles.md)) and shows:
+
+```
+Server: https://host/arcore/switch/
+Device: <ro.product.device>  key: <obf>
+Camera: fx 464.5, fy 464.2
+
+[ Auto: match this camera ]
+[ Advanced tuning... ]
+[ Server URL... ]
+chopin_patched (fx 464.6) ★
+viotune (fx 464.6)
+...
+```
+
+* the profile whose focal length is closest to this camera is marked **★**;
+* tapping a profile downloads it (`<base><name>/<version>.zip`) and restarts
+  ARCore;
+* **Auto: match this camera** reads the back camera, computes
+  `fx = f_mm / sensor_width_mm * 640`, picks the closest catalogue entry and
+  requests a custom profile with *this device's* intrinsics and key
+  (`custom/<version>.zip?base=...&fx=...&dev=...`).  The resulting profile uses
+  the donor's IMU/timing but the exact optics of this phone;
+* **Advanced tuning...** opens the full parameter editor (base spinner + every
+  profile field).  Empty fields keep the base profile's value.
+
+### Recovery from an incompatible profile
+
+Some profiles create a session but are rejected by the camera stack
+(`FatalException` in `Session.resume()`) — typically a profile from a phone with
+a different camera pipeline.  The app then shows:
+
+```
+Profile rejected by ARCore
+ARCore created the session but could not start the camera with this profile.
+[Re-apply <last working profile>]  [Profiles...]  [Close]
+```
+
+The last profile that actually resumed is remembered, so one tap restores a
+working state.  `flame` (Pixel 4) is a known example of a profile that breaks a
+POCO X6 Pro this way.
 
 ### Device info / intrinsics
 

@@ -46,6 +46,30 @@ adb shell wm dismiss-keyguard
 adb shell monkey -p <package> -c android.intent.category.LAUNCHER 1
 ```
 
+## Profile rejected by ARCore (`FatalException` in `resume()`)
+
+```
+SESSION_CREATED_OK
+onResume FAILED: com.google.ar.core.exceptions.FatalException
+```
+
+A device profile carries the camera configuration, not only calibration.  A
+profile from a phone with a different camera pipeline can create a session but
+fail to start the camera.  The app detects this and offers to re-apply the last
+working profile.
+
+To recover manually, push a known-good profile:
+
+```bash
+adb shell am force-stop com.google.ar.core
+adb shell am start --activity-clear-task -n com.google.ar.core/com.google.ar.core.services.profiles.ProfileDownloadActivity \
+  --es explicit-download-url "https://HOST/arcore/switch/<known-good>/<version>.zip"
+```
+
+> `ProfileDownloadActivity` reuses its task: a plain `am start` when it is
+> already open only brings it to the front and **does not pass the new URL**.
+> `am force-stop com.google.ar.core` and/or `--activity-clear-task` fixes that.
+
 ## ANR (10–30 s freeze, "not responding")
 
 Look for texture loading or world loading in the app log:

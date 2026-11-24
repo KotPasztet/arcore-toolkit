@@ -1,5 +1,6 @@
 """Tools for ARCore device profiles and AR experiments."""
 
+from .catalog import closest, profile_info
 from .core import (
     SALT,
     SUFFIXES,
@@ -23,6 +24,8 @@ __all__ = [
     "DeviceProfile",
     "build_toc",
     "build_zip",
+    "closest",
+    "profile_info",
     "enc",
     "extract_from_assets",
     "obf",

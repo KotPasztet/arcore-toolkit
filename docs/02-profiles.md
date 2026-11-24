@@ -176,7 +176,25 @@ adb logcat | grep -aE "Device profile for|Using local profile database version"
 The test app shows the intrinsics ARCore actually uses (`focal=...`), which is
 the quickest way to confirm the profile is active.
 
-## 7. Server
+## 7. Catalogue endpoint
+
+The test app builds its profile browser from the server catalogue:
+
+```
+GET /arcore/switch/profiles
+{
+  "profiles": [
+    {"name": "chopin_patched", "fx": 464.56, "fy": 464.56, "cx": 320, "cy": 240},
+    ...
+  ],
+  "default_key": "pADuJF"
+}
+```
+
+The intrinsics come from the actual `.pb` files, so the app can pick the closest
+donor for the current camera and mark it with a star.
+
+## 8. Server
 
 `tools/server/switch_server.py` builds ZIPs per request:
 
@@ -213,7 +231,7 @@ location /arcore/switch/ {
 }
 ```
 
-## 8. Practical notes
+## 9. Practical notes
 
 * ARCore probes the device key **and** sensor-qualified variants; include all.
 * A "random" profile from a similar phone often works (the profile is a

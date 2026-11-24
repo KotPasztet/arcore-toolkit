@@ -4,14 +4,9 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.graphics.Rect;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
-import android.util.Size;
-import android.util.SizeF;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -23,12 +18,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Reads the camera and IMU characteristics of this device and derives the
- * intrinsics ARCore expects for its 640x480 stream.
- *
- * This is the "suggest a profile" screen: it turns the hardware numbers into
- * the fx/fy that a device profile should contain, plus a ready-to-run
- * arcore-profile command.
+ * Camera and IMU characteristics of this device plus the intrinsics ARCore
+ * expects for its 640x480 stream.
  */
 public class DeviceInfoActivity extends Activity {
     private TextView output;
@@ -75,78 +66,47 @@ public class DeviceInfoActivity extends Activity {
 
     private String dumpCamera() {
         StringBuilder sb = new StringBuilder("== camera ==\n");
-        try {
-            CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-            String chosen = null;
-            for (String id : manager.getCameraIdList()) {
-                CameraCharacteristics c = manager.getCameraCharacteristics(id);
-                Integer facing = c.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
-                    chosen = id;
-                    break;
-                }
+        CameraSpec ci = CameraSpec.read(this);
+        if (ci == null) {
+            return sb.append("no back camera found\n").toString();
+        }
+        sb.append("camera id: ").append(ci.cameraId).append('\n');
+        sb.append("active array: ").append(ci.activeArray).append('\n');
+        sb.append("pixel array: ").append(ci.pixelArray).append('\n');
+        sb.append("sensor orientation: ").append(ci.sensorOrientation).append('\n');
+        sb.append("timestamp source: ")
+          .append(ci.timestampSource == null ? "?"
+                  : (ci.timestampSource == 1 ? "REALTIME" : "MONOTONIC"))
+          .append('\n');
+        if (ci.physicalSize != null) {
+            sb.append(String.format(Locale.US, "physical size: %.3f x %.3f mm\n",
+                    ci.physicalSize.getWidth(), ci.physicalSize.getHeight()));
+        }
+        if (ci.focalLength > 0f) {
+            sb.append(String.format(Locale.US, "focal length: %.3f mm\n", ci.focalLength));
+        }
+        if (ci.calibration != null && ci.calibration.length >= 4) {
+            sb.append("factory intrinsic calibration: ");
+            for (int i = 0; i < ci.calibration.length; i++) {
+                sb.append(i == 0 ? "" : ", ").append(ci.calibration[i]);
             }
-            if (chosen == null) {
-                return sb.append("no back camera found\n").toString();
+            sb.append('\n');
+        }
+        if (ci.distortion != null && ci.distortion.length > 0) {
+            sb.append("factory distortion: ");
+            for (int i = 0; i < ci.distortion.length; i++) {
+                sb.append(i == 0 ? "" : ", ").append(ci.distortion[i]);
             }
-            CameraCharacteristics c = manager.getCameraCharacteristics(chosen);
-            sb.append("camera id: ").append(chosen).append('\n');
-
-            SizeF physical = c.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
-            float[] focals = c.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
-            Rect active = c.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-            Size pixel = c.get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE);
-            Integer orientation = c.get(CameraCharacteristics.SENSOR_ORIENTATION);
-            Integer tsSource = c.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
-            float[] calib = c.get(CameraCharacteristics.LENS_INTRINSIC_CALIBRATION);
-            float[] distortion = c.get(CameraCharacteristics.LENS_DISTORTION);
-
-            sb.append("active array: ").append(active).append('\n');
-            sb.append("pixel array: ").append(pixel).append('\n');
-            sb.append("sensor orientation: ").append(orientation).append('\n');
-            sb.append("timestamp source: ")
-              .append(tsSource == null ? "?" : (tsSource == 1 ? "REALTIME" : "MONOTONIC"))
-              .append('\n');
-            if (physical != null) {
-                sb.append(String.format(Locale.US, "physical size: %.3f x %.3f mm\n",
-                        physical.getWidth(), physical.getHeight()));
-            }
-            if (focals != null && focals.length > 0) {
-                sb.append(String.format(Locale.US, "focal length: %.3f mm\n", focals[0]));
-            }
-            if (calib != null && calib.length >= 4) {
-                sb.append("factory intrinsic calibration: ");
-                for (int i = 0; i < calib.length; i++) sb.append(i == 0 ? "" : ", ").append(calib[i]);
-                sb.append('\n');
-            }
-            if (distortion != null && distortion.length > 0) {
-                sb.append("factory distortion: ");
-                for (int i = 0; i < distortion.length; i++) {
-                    sb.append(i == 0 ? "" : ", ").append(distortion[i]);
-                }
-                sb.append('\n');
-            }
-
-            if (physical != null && focals != null && focals.length > 0 && active != null) {
-                // The ARCore CPU image is 640x480.  If the stream uses the full
-                // sensor width, fx = f / sensor_width * 640.
-                double f = focals[0];
-                double w = physical.getWidth();
-                double h = physical.getHeight();
-                double fx = f / w * 640.0;
-                double fy = f / h * 480.0;
-                double hfov = Math.toDegrees(2.0 * Math.atan(w / (2.0 * f)));
-                double vfov = Math.toDegrees(2.0 * Math.atan(h / (2.0 * f)));
-                sb.append(String.format(Locale.US,
-                        "\n=> for 640x480: fx=%.1f fy=%.1f  (HFOV %.1f deg, VFOV %.1f deg)\n",
-                        fx, fy, hfov, vfov));
-                sb.append(String.format(Locale.US,
-                        "   arcore-profile patch base.pb -o out.pb --fx %.1f --fy %.1f --cx 320 --cy 240\n",
-                        fx, fy));
-                sb.append("   (verify with a printed AprilGrid; distortion is not known from the HAL)\n");
-            }
-        } catch (Throwable t) {
-            sb.append("camera error: ").append(t).append('\n');
+            sb.append('\n');
+        }
+        if (ci.valid()) {
+            sb.append(String.format(Locale.US,
+                    "\n=> for 640x480: fx=%.1f fy=%.1f  (HFOV %.1f deg, VFOV %.1f deg)\n",
+                    ci.fx(), ci.fy(), ci.hfovDeg(), ci.vfovDeg()));
+            sb.append(String.format(Locale.US,
+                    "   arcore-profile patch base.pb -o out.pb --fx %.1f --fy %.1f --cx 320 --cy 240\n",
+                    ci.fx(), ci.fy()));
+            sb.append("   (verify with a printed AprilGrid; distortion is not known from the HAL)\n");
         }
         return sb.toString();
     }

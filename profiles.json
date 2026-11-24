@@ -1,0 +1,31 @@
+{
+  "profiles": {
+    "chopin_patched": "/root/arcore-lab/profiles_out/chopinpatched_*.pb",
+    "viotune": "/root/arcore-lab/profiles_out/viotune_*.pb",
+    "chopin": "/root/arcore-lab/profiles_out/chopin_*.pb",
+    "marble": "/root/arcore-lab/profiles_out/marble_*.pb",
+    "vayu": "/root/arcore-lab/profiles_out/vayu_*.pb",
+    "alioth": "/root/arcore-lab/profiles_out/alioth_*.pb",
+    "sweet": "/root/arcore-lab/profiles_out/sweet_*.pb",
+    "flame": "/root/arcore-lab/profiles_out/flame_*.pb",
+    "hwmar": "/root/arcore-lab/profiles_out/hwmar_*.pb",
+    "rs2": "/root/arcore-lab/profiles_out/variantrs2_*.pb",
+    "tsa0": "/root/arcore-lab/profiles_out/varianttsa0_*.pb",
+    "tb2": "/root/arcore-lab/profiles_out/varianttb2_*.pb",
+    "depth1": "/root/arcore-lab/profiles_out/variantdepth1_*.pb",
+    "extr": "/root/arcore-lab/profiles_out/variantextr_*.pb",
+    "genericimu": "/root/arcore-lab/profiles_out/genericimu_*.pb",
+    "track720": "/root/arcore-lab/profiles_out/track720_*.pb",
+    "extr90": "/root/arcore-lab/profiles_out/extr90_*.pb",
+    "pzero": "/root/arcore-lab/profiles_out/pzero_*.pb"
+  },
+  "keys": {
+    "hwmar": [
+      "HWMAR",
+      "HWMAR_SFP_accelerometer-bmi160_SUNNY_SFP",
+      "MAR-LX1MRU/HWMAR",
+      "MAR-LX1MRU/HWMAR_SFP_accelerometer-bmi160_SUNNY_SFP"
+    ]
+  },
+  "default_key": "pADuJF"
+}
