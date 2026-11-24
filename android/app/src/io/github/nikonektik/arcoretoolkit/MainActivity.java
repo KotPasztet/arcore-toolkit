@@ -83,6 +83,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private volatile int lastPlanes = 0;
     private int placed = 0;
     private static final String PREFS = "arcoretoolkit";
+    private static final String DEFAULT_SERVER = "https://nikonekt.ru:9444/arcore/switch/";
+    private static final String LEGACY_SERVER = "https://nikonekt.ru:9443/arcore/switch/";
     private static final String PREF_SERVER = "server";
     private static final String PREF_LABEL = "label";
     private static final String PREF_PENDING_SPEC = "pending_spec";
@@ -266,10 +268,16 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     }
 
     private String serverBase() {
-        String base = getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_SERVER, "");
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String base = prefs.getString(PREF_SERVER, "");
         if (base == null) base = "";
         base = base.trim();
-        if (base.isEmpty()) return "";
+        if (base.isEmpty()) {
+            base = DEFAULT_SERVER;
+        } else if (base.equals(LEGACY_SERVER)) {
+            base = DEFAULT_SERVER;
+            prefs.edit().putString(PREF_SERVER, DEFAULT_SERVER).apply();
+        }
         if (!base.endsWith("/")) base += "/";
         return base;
     }

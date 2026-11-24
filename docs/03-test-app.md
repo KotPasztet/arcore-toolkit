@@ -19,6 +19,10 @@
 | **Marker AR** | AprilTag prototype (Camera2 + OpenCV) |
 | **Calibration** | camera + IMU recorder for Kalibr |
 
+> The app ships with a default profile server
+> (`https://nikonekt.ru:9444/arcore/switch/`).  Use **Server URL...** to point it
+> at your own server.
+
 ### Profiles dialog
 
 Opened with **Profiles...**; it fetches the catalogue from the server

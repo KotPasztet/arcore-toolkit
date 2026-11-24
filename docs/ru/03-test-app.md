@@ -19,6 +19,10 @@
 | **Marker AR** | прототип AprilTag (Camera2 + OpenCV) |
 | **Calibration** | запись камеры + IMU для Kalibr |
 
+> В приложении по умолчанию прописан сервер профилей
+> `https://nikonekt.ru:9444/arcore/switch/`. Кнопка **Server URL...** переключает
+> на ваш собственный.
+
 ### Диалог Profiles
 
 Открывается кнопкой **Profiles...**; список берётся с сервера
