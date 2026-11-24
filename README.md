@@ -23,6 +23,12 @@ reverse engineering ARCore 1.5x; nothing is documented by Google.
 | **ARCore shim** | replaces `libarcore_sdk_c.so` inside any ARCore app: forward everything to the real library, optionally override tracking with AprilTag poses (marker AR) |
 | **Docs** | how the profile format works, how to install profiles without root, per-device case studies, troubleshooting |
 
+## Screenshots
+
+| AR test | Device info / intrinsics |
+|---|---|
+| ![AR test](docs/images/main.jpg) | ![Device info](docs/images/device-info.jpg) |
+
 ## Repository layout
 
 ```

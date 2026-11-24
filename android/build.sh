@@ -44,7 +44,8 @@ find app/src -name '*.java' > build/sources.txt
 javac -source 8 -target 8 -classpath "$CP" -d build/classes @build/sources.txt
 
 find build/classes -name '*.class' > build/classes.txt
-"$BT/d8" --lib "$ANDROID_JAR" --min-api 29 --output build/dex @build/classes.txt
+"$BT/d8" --lib "$ANDROID_JAR" --min-api 29 --output build/dex @build/classes.txt \
+    build/deps/arcore/classes.jar build/deps/opencv/classes.jar
 
 "$BT/aapt2" link -o build/base.apk --manifest AndroidManifest.xml -I "$ANDROID_JAR" \
     --min-sdk-version 29 --target-sdk-version 35 \

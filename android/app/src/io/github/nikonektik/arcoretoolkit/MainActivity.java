@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         root.addView(surfaceView, new FrameLayout.LayoutParams(-1, -1));
 
         hud = new TextView(this);
-        hud.setText("ARCore Test Game\nProfile: " + currentProfileLabel()
+        hud.setText("ARCore Toolkit\nProfile: " + currentProfileLabel()
                 + "\nTap a green plane to place a cube");
         hud.setTextColor(Color.WHITE);
         hud.setTextSize(16f);
@@ -294,7 +294,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                hud.setText("ARCore Test Game\nProfile: " + currentProfileLabel()
+                hud.setText("ARCore Toolkit\nProfile: " + currentProfileLabel()
                         + "\nTracking: " + lastTracking
                         + "\nPlanes: " + lastPlanes
                         + "\nCubes: " + placed
