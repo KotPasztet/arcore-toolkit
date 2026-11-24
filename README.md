@@ -152,6 +152,7 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 | [docs/06-shim.md](docs/06-shim.md) | shim architecture, coordinate frames, overrides, bugs |
 | [docs/07-troubleshooting.md](docs/07-troubleshooting.md) | logs, ADB, ANR, dark-screen crash |
 | [docs/devices.md](docs/devices.md) | case studies: POCO X6 Pro, Huawei P30 Lite |
+| [docs/reverse-engineering.md](docs/reverse-engineering.md) | how the profile database and key obfuscation were reverse engineered |
 
 ## License
 
