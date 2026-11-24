@@ -23,6 +23,22 @@
 > (`https://nikonekt.ru:9444/arcore/switch/`).  Use **Server URL...** to point it
 > at your own server.
 
+### Missing ARCore
+
+When Play Services for AR is missing or too old, the app asks before doing
+anything:
+
+* **Download APK automatically** — downloads an ARCore APK over HTTPS, checks
+  the package name and Google's signing certificate, and opens the system
+  installer.  The default URL is `<server>/arcore/apk`; **Change APK URL...**
+  saves a different one.
+* **Open Google Play** — uses the official ARCore install flow.
+* Android may first ask you to allow installing unknown apps for this toolkit.
+
+The APK is never bundled with the repository; the server serves a file you
+provide (`arcore_apk` in `profiles.json`, see
+[02-profiles.md](02-profiles.md)).
+
 ### Profiles dialog
 
 Opened with **Profiles...**; it fetches the catalogue from the server

@@ -12,6 +12,7 @@ GET /arcore/switch/<name>/<version>.zip[?dev=<device>[,<device>...]|?key=<key>[,
 GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
                                      &k0=..&k1=..&k2=..&rs=..&tsa=..&tb=..
                                      &rss=..&depth=..[&dev=..|&key=..]
+GET /arcore/apk[.apk]                 optional ARCore runtime APK for the app
 
 Configuration (JSON)
 --------------------
@@ -23,6 +24,7 @@ Configuration (JSON)
   "keys": {
     "hwmar": ["HWMAR", "HWMAR_SFP_accelerometer-bmi160_SUNNY_SFP"]
   },
+  "arcore_apk": "arcore.apk",
   "default_key": "pADuJF"
 }
 
@@ -37,6 +39,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import socketserver
 import sys
 import zipfile
@@ -69,11 +72,12 @@ DEFAULTS = {
 
 def load_config(path: str) -> dict:
     if not path:
-        return {"profiles": {}, "keys": {}, "default_key": "pADuJF"}
+        return {"profiles": {}, "keys": {}, "arcore_apk": "", "default_key": "pADuJF"}
     with open(path, encoding="utf-8") as fh:
         cfg = json.load(fh)
     cfg.setdefault("profiles", {})
     cfg.setdefault("keys", {})
+    cfg.setdefault("arcore_apk", "")
     cfg.setdefault("default_key", "pADuJF")
     return cfg
 
@@ -96,6 +100,14 @@ class ProfileStore:
             return None
         with open(path, "rb") as fh:
             return fh.read()
+
+    def arcore_apk_path(self) -> str | None:
+        value = (self.config.get("arcore_apk") or "").strip()
+        if not value:
+            return None
+        if not os.path.isabs(value):
+            value = os.path.join(self.directory, value)
+        return value if os.path.isfile(value) else None
 
     def catalog(self) -> list[dict]:
         out = []
@@ -182,6 +194,24 @@ class Handler(BaseHTTPRequestHandler):
                 "profiles": self.store.catalog(),
                 "default_key": self.store.config.get("default_key", "pADuJF"),
             })
+            return
+        if parsed.path in ("/arcore/apk", "/arcore/apk/latest", "/arcore/apk/latest.apk"):
+            path = self.store.arcore_apk_path()
+            if not path:
+                self._json(404, {"error": "arcore_apk is not configured on the server"})
+                return
+            size = os.path.getsize(path)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.android.package-archive")
+            self.send_header("Content-Length", str(size))
+            self.send_header("Content-Disposition", 'attachment; filename="arcore.apk"')
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            if send_body:
+                with open(path, "rb") as fh:
+                    shutil.copyfileobj(fh, self.wfile)
+            if self.verbose:
+                print(f"served ARCore APK ({size}B)", flush=True)
             return
         match = re.match(
             r"^/arcore/switch/([A-Za-z0-9_.-]+)/([0-9]+(?:\.[0-9]+){1,3})\.zip$",

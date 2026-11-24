@@ -74,7 +74,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
 
     private final List<Anchor> anchors = Collections.synchronizedList(new ArrayList<Anchor>());
     private volatile Frame lastFrame;
-    private boolean installRequested = false;
+    private boolean installDialogShown = false;
     private int frameCount = 0;
     private long lastStatusLog = 0;
 
@@ -302,6 +302,15 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         }
         if (!base.endsWith("/")) base += "/";
         return base;
+    }
+
+    private String arCoreApkUrl() {
+        String base = serverBase();
+        int idx = base.indexOf("/arcore/switch/");
+        if (idx >= 0) {
+            return base.substring(0, idx) + "/arcore/apk";
+        }
+        return base.endsWith("/") ? base + "arcore.apk" : base + "/arcore.apk";
     }
 
     private void editServer() {
@@ -802,16 +811,34 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             Log.i(TAG, "availability=" + a);
             if (a == ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED
                     || a == ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD) {
-                ArCoreApk.getInstance().requestInstall(this, !installRequested);
-                installRequested = true;
+                if (ArCoreInstaller.retryPending(this)) return;
+                if (!installDialogShown) {
+                    installDialogShown = true;
+                    ArCoreInstaller.showInstallDialog(this, arCoreApkUrl(), String.valueOf(a));
+                }
                 return;
             }
             if (!a.isSupported()) {
                 Log.e(TAG, "ARCore not supported: " + a);
-                showError("ARCore is not available",
-                        "ARCore reports: " + a + "\n\n"
-                                + "Install/update Google Play Services for AR and a device profile, "
-                                + "then reopen this screen. See docs/02-profiles.md.");
+                if ((a == ArCoreApk.Availability.UNKNOWN_ERROR
+                        || a == ArCoreApk.Availability.UNKNOWN_TIMED_OUT)
+                        && !installDialogShown) {
+                    installDialogShown = true;
+                    new AlertDialog.Builder(this)
+                            .setTitle("ARCore is not available")
+                            .setMessage("ARCore reports: " + a + "\n\n"
+                                    + "You can try installing/updating Google Play Services for AR.")
+                            .setPositiveButton("Install ARCore...", (d, w) ->
+                                    ArCoreInstaller.showInstallDialog(
+                                            this, arCoreApkUrl(), String.valueOf(a)))
+                            .setNegativeButton("Close", null)
+                            .show();
+                } else {
+                    showError("ARCore is not available",
+                            "ARCore reports: " + a + "\n\n"
+                                    + "Install/update Google Play Services for AR and a device profile, "
+                                    + "then reopen this screen. See docs/02-profiles.md.");
+                }
                 return;
             }
             if (session == null) {

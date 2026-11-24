@@ -203,6 +203,7 @@ donor for the current camera and mark it with a star.
 ```
 GET /arcore/switch/<name>/<version>.zip[?dev=..|?key=..]
 GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
+GET /arcore/apk                  optional ARCore runtime APK for the app
 ```
 
 `profiles.json` maps names to glob patterns and can pin device keys:
@@ -216,6 +217,7 @@ GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
   "keys": {
     "hwmar": ["HWMAR", "HWMAR_SFP_accelerometer-bmi160_SUNNY_SFP"]
   },
+  "arcore_apk": "arcore.apk",
   "default_key": "pADuJF"
 }
 ```
@@ -223,10 +225,15 @@ GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
 Custom parameters: `fx fy cx cy k0 k1 k2 rs tsa tb rss depth gsx gsy gsz gn an`.
 `?base=` selects the source profile.
 
+`arcore_apk` is optional and may be an absolute path or a path relative to
+`--profiles-dir`.  It is **not** committed; put your own universal ARCore APK
+there.  The test app uses `<server>/arcore/apk` as the default download URL and
+verifies Google's signing certificate before installing it.
+
 Serve it behind HTTPS, e.g. nginx:
 
 ```nginx
-location /arcore/switch/ {
+location /arcore/ {
     proxy_pass http://127.0.0.1:8099;
     proxy_read_timeout 30s;
     add_header Cache-Control "no-store";

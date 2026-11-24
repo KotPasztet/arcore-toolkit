@@ -3,5 +3,6 @@
     "example": "profiles/example_*.pb"
   },
   "keys": {},
+  "arcore_apk": "",
   "default_key": "pADuJF"
 }

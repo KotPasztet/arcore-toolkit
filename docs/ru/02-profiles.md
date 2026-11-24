@@ -201,6 +201,7 @@ GET /arcore/switch/profiles
 ```
 GET /arcore/switch/<name>/<version>.zip[?dev=..|?key=..]
 GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
+GET /arcore/apk                  необязательный ARCore APK для приложения
 ```
 
 `profiles.json` сопоставляет имена и glob-шаблоны и может закреплять ключи устройств:
@@ -214,6 +215,7 @@ GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
   "keys": {
     "hwmar": ["HWMAR", "HWMAR_SFP_accelerometer-bmi160_SUNNY_SFP"]
   },
+  "arcore_apk": "arcore.apk",
   "default_key": "pADuJF"
 }
 ```
@@ -221,10 +223,15 @@ GET /arcore/switch/custom/<version>.zip?base=<name>&fx=..&fy=..&cx=..&cy=..
 Параметры `custom`: `fx fy cx cy k0 k1 k2 rs tsa tb rss depth gsx gsy gsz gn an`.
 `?base=` выбирает исходный профиль.
 
+`arcore_apk` необязателен; путь может быть абсолютным или относительным
+`--profiles-dir`. APK **не** входит в репозиторий — положите туда свой universal
+APK. Тестовое приложение использует `<server>/arcore/apk` как URL по умолчанию и
+проверяет подпись Google перед установкой.
+
 За HTTPS, например nginx:
 
 ```nginx
-location /arcore/switch/ {
+location /arcore/ {
     proxy_pass http://127.0.0.1:8099;
     proxy_read_timeout 30s;
     add_header Cache-Control "no-store";

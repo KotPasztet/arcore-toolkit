@@ -20,7 +20,7 @@ reverse engineering ARCore 1.5x; nothing is documented by Google.
 |---|---|
 | **Device profiles** | derive the profile key (`md5`/base64url of `ro.product.device`), decode/encode profiles, patch intrinsics/IMU/timestamps, build the ZIP ARCore downloads, extract a profile from your own ARCore APK |
 | **Profile server** | tiny HTTP server that builds profile ZIPs on the fly (named profiles, per-device keys, custom intrinsics from query parameters) |
-| **Test app** | ARCore availability/session test, live HUD, plane/anchor test, **profile browser with auto-match by camera intrinsics**, custom tuning, device info screen, marker-AR prototype, camera+IMU recorder, recovery from an incompatible profile |
+| **Test app** | ARCore availability/session test, live HUD, plane/anchor test, **profile browser with auto-match by camera intrinsics**, custom tuning, device info screen, marker-AR prototype, camera+IMU recorder, recovery from an incompatible profile, optional ARCore APK download with Google-signature verification |
 | **Calibration** | Camera2 + IMU recorder → ROS bag → Kalibr; OpenCV camera calibration; printable AprilGrid and AprilTag targets |
 | **ARCore shim** | replaces `libarcore_sdk_c.so` inside any ARCore app: forward everything to the real library, optionally override tracking with AprilTag poses (marker AR) |
 | **Docs** | how the profile format works, how to install profiles without root, per-device case studies, troubleshooting |
