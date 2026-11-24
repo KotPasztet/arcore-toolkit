@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "example": "profiles/example_*.pb"
+  },
+  "keys": {},
+  "default_key": "pADuJF"
+}

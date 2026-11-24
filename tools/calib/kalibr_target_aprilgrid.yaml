@@ -1,0 +1,8 @@
+# AprilGrid 6x6, printed on A4 at 300 DPI.
+# Printed 100 mm scale bar measured 99 mm -> uniform print scale = 0.99.
+# Intended tagSize 25 mm -> actual tagSize 24.75 mm.
+target_type: 'aprilgrid'
+tagCols: 6
+tagRows: 6
+tagSize: 0.02475
+tagSpacing: 0.3

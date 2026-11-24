@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arcore-profile"
+version = "0.1.0"
+description = "Inspect, patch and package ARCore device profiles (reverse-engineered 1.5x)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "nikonektik" }]
+keywords = ["arcore", "android", "ar", "profile", "calibration"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.scripts]
+arcore-profile = "arcore_profile.cli:main"
+
+[tool.setuptools]
+packages = ["arcore_profile"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,31 @@
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# android build artefacts
+android/deps/
+android/build/
+android/*.apk
+android/*.idsig
+android/debug.keystore
+android/arcore-toolkit.apk
+
+# shim build artefacts
+tools/shim/shim.c
+tools/shim/*.so
+
+# user data: profiles extracted from your own ARCore installation
+profiles/*.pb
+profiles/*.zip
+
+# calibration data
+*.bag
+calib*.tar
+aprilgrid_a4_*.pdf
+aprilgrid_a4_*.png
+aprilgrid_a4_*.jpg
+marker_a4_*.pdf
+marker_a4_*.png
