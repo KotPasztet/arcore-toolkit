@@ -100,8 +100,12 @@ sequence:
   "pose flip" when the tag is viewed almost edge-on;
 * `hamming`, `decision_margin`, quad area and reprojection error gate the
   candidates; a weak tag is accepted only when tracking was already lost;
-* one tag ID is locked while it is visible (`lock_tag=1`), so a second tag in
-  the scene cannot steal the pose;
+* a single tag ID is locked while it is visible (`lock_tag=1`); with a multi-tag
+  layout, all configured IDs are used and their poses in the common sheet frame
+  are fused (weighted by area, margin and reprojection error);
+* the built-in layout is the hybrid A3 sheet (110 mm centre + four 55 mm
+  corners); the `tags` file overrides it, and a one-line file makes it a single
+  tag again;
 * One Euro filter on position/rotation plus constant-velocity prediction
   (`lead`) keeps the view smooth and responsive at render rate;
 * after a short hold time (`hold_ms`, 350 ms) tracking pauses; the last pose is
@@ -131,9 +135,11 @@ The shim reads optional files from the target app's data directory
 | `plane_mode` | `0` = identity plane (Y-up), `1..4` = legacy rotations |
 | `freeze` | stop grabbing camera frames (A/B test) |
 | `dist`, `dist_off` | distortion coefficients / disable correction |
-| `tag_size` | printed black square, mm |
+| `tag_size` | legacy single-tag size, mm; the hybrid `tags` layout uses per-tag sizes |
+| `tags` | multi-tag layout: `id x_mm y_mm yaw_deg size_mm` per line (see docs/05-marker-ar.md) |
 | `margin`, `hamming`, `min_area`, `max_px` | detection/candidate gates |
 | `max_jump`, `max_ang` | outlier rejection against the predicted pose |
+| `fuse_jump`, `fuse_ang` | max disagreement between tags before one is excluded from fusion (default 0.08 m / 10 deg) |
 | `filter_off`, `euro` | disable / configure the One Euro filter (`f_min`, `beta_pos`, `beta_rot`) |
 | `predict_off`, `lead`, `predict_ms` | disable / tune pose prediction and its maximum extrapolation |
 | `latency_ms` | fallback camera pipeline latency when ARCore timestamps use an unknown clock base (default 25 ms) |
