@@ -1,100 +1,103 @@
-**English** | [Русский](ru/01-getting-started.md)
-
 # Getting started
 
-> Never used ADB or built an APK? Start with the command-by-command
-> [beginner cases](08-beginner-cases.md).
+The fastest way in: download the ready-made APK from GitHub Actions, install
+it, apply a device profile. No JDK, no Android SDK, no building.
 
-## 1. Requirements
+## What you need
 
-| Component | Version |
+* An Android 10+ phone. Nothing on the PC — unless you want ADB later for
+  calibration export or bug reports ([docs/03-troubleshooting.md](03-troubleshooting.md)).
+
+## Step 1: Install the app from a CI artifact
+
+Every push to the repository is built by GitHub Actions, and every build
+uploads a ready APK as a downloadable artifact (kept for 30 days). This is
+always the newest version — easier than building from source.
+
+1. Open the [Actions tab](https://github.com/KotPasztet/arcore-toolkit/actions).
+2. Click the latest CI run with a green check.
+3. Scroll down to the **Artifacts** section and download the artifact named
+   `arcore-toolkit-debug-…`.
+4. Unzip the downloaded file — inside is the APK, e.g. `app-debug.apk`.
+5. Copy the APK to the phone and open it there. Android asks to allow
+   installing from this source — allow it. Play Protect may warn; the APK is
+   built automatically from this public repository and signed with a debug
+   key.
+6. Install and open **ARCore Toolkit**.
+
+Signed releases also exist (see the GitHub *Releases* page when there is one),
+but the CI artifact is always up to date.
+
+## Step 2: First launch
+
+1. Allow the camera permission.
+2. If Google Play Services for AR (ARCore) is missing or too old, the app
+   asks before doing anything: it can open Google Play, or download an ARCore
+   APK over HTTPS, verify Google's signature and install it. Either way is
+   fine.
+3. The main screen should show `availability=SUPPORTED_INSTALLED`, then
+   `SESSION_CREATED_OK` once a session starts.
+
+On an unsupported device the session will not start yet — that is expected.
+A profile comes next.
+
+## The main screen at a glance
+
+| Button | What it does |
 |---|---|
-| Python | 3.9+ |
-| JDK | 11+ (tested with 21) |
-| Android SDK | `platforms/android-35`, `build-tools/35.0.0` |
-| Android NDK | r25+ (r27c tested) |
-| Device | Android 10+ with ADB, **no root** |
+| **Profiles…** | download and apply a device profile |
+| **Device info** | camera and IMU report with the computed focal length |
+| **Marker AR** | track a printed AprilTag (no ARCore involved) |
+| **Calibration** | record a dataset for real calibration (advanced) |
+| **Print the tag (PDF)** | save a printable AprilTag PDF to Downloads |
+
+## Step 3: Apply a device profile
+
+A profile is a small calibration file that ARCore downloads from a *profile
+server*. The app ships with a default server already configured, so:
+
+1. Tap **Profiles…**.
+2. Tap **Auto: match this camera**. The app reads your camera's focal length,
+   picks the closest profile on the server and has the server rebuild it with
+   your camera's numbers. This needs the server to be reachable; if it is
+   not, the dialog offers **Use default server** and **Set server URL…**.
+   (Tapping any profile in the list downloads it as is.)
+3. ARCore restarts, and the HUD should show `Tracking: TRACKING` once the
+   camera sees some texture. Tap anywhere to place a cube.
+
+If the camera refuses to start with the chosen profile, the app detects it
+and offers **Re-apply …** to restore the last working one
+([docs/03-troubleshooting.md](03-troubleshooting.md)).
+
+For your own server, custom profiles and what the numbers mean, see
+[docs/04-profiles.md](04-profiles.md).
+
+## If tracking is still bad
+
+1. Check the focal length the HUD prints against **Device info** — if they
+   differ, the profile did not apply ([docs/04-profiles.md](04-profiles.md)).
+2. Good profile, unstable tracking? Calibrate the camera and IMU properly
+   ([docs/05-calibration.md](05-calibration.md), advanced).
+3. Device cannot track at all? Print the tag and use marker tracking
+   ([docs/02-marker-tracking.md](02-marker-tracking.md)); for other apps
+   there is the shim ([docs/06-shim.md](06-shim.md), advanced).
+4. Anything else: [docs/03-troubleshooting.md](03-troubleshooting.md).
+
+## Building from source (optional)
+
+You only need this to change the app's code. Install JDK 17 (or newer) and an
+Android SDK, then:
 
 ```bash
-export ANDROID_SDK_ROOT=/path/to/android-sdk
-export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/android-ndk-r27c
+./gradlew :android:assembleDebug   # APK lands in android/build/outputs/apk/debug/
+adb install -r android/build/outputs/apk/debug/app-debug.apk
 ```
 
-## 2. Install the Python tools
+CI builds and uploads the same APK on every push, so downloading the artifact
+is almost always enough.
 
-```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
-pytest -q
-```
+## Legal
 
-## 3. ADB
-
-USB:
-
-```bash
-adb devices -l
-```
-
-Wi-Fi (Android 11+): enable *Wireless debugging*, then
-
-```bash
-adb pair <ip>:<pair-port>     # once, with the code from the dialog
-adb connect <ip>:<port>
-```
-
-mDNS discovery without knowing the port:
-
-```bash
-avahi-browse -rt _adb-tls-connect._tcp
-```
-
-Android 10 has no wireless debugging UI; use `adb tcpip 5555` over USB and then
-`adb connect <ip>:5555`.
-
-## 4. Build and install the test app
-
-```bash
-cd android
-./build.sh          # deps are downloaded into android/deps/
-adb install -r arcore-toolkit.apk
-```
-
-Launch it from the launcher (or with `monkey`, see the troubleshooting doc — a
-sleeping screen makes the app crash on some ROMs).
-
-## 5. Install ARCore and a profile
-
-1. Install the official ARCore APK (Google signature).  The app's manifest asks
-   for `min_apk_version=262640283` (ARCore 1.57).
-2. Start the profile server (see [02-profiles.md](02-profiles.md)) and push a
-   profile to the device with `ProfileDownloadActivity`.
-3. Open the test app: the first screen should show `availability=SUPPORTED_INSTALLED`,
-   then `SESSION_CREATED_OK`, and the HUD should show `Tracking: TRACKING` once
-   the camera sees some texture.
-
-## 6. Typical workflow
-
-```
-camera characteristics ──► intrinsics ──► profile ──► ARCore session
-        (Device info)        (fx, fy)      (server)        (test app)
-                                                        └─► calibration (Kalibr)
-                                                        └─► shim (marker AR)
-```
-
-* Start from a profile of a phone with a similar camera (focal length is the
-  most important number).
-* Use **Device info / intrinsics** in the app to compute the exact `fx/fy` for
-  your camera and patch the profile.
-* If ARCore still tracks badly, calibrate the camera and IMU with a printed
-  target ([04-calibration.md](04-calibration.md)).
-* If the device cannot track at all, use marker AR with the shim
-  ([05-marker-ar.md](05-marker-ar.md), [06-shim.md](06-shim.md)).
-
-## 7. Legal
-
-This is research tooling for your own devices.  ARCore, the ARCore SDK and
-device profile data are Google's proprietary software; they are not distributed
-here.  Building the shim requires extracting the ARCore SDK library from an APK
-you already have (or from the public Maven artifact) — that stays on your
-machine.
+Research tooling for your own devices. ARCore, the ARCore SDK and device
+profile data are Google's proprietary software; they are not distributed
+here.

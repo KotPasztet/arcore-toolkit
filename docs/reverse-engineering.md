@@ -1,6 +1,10 @@
-**English** | [Русский](ru/reverse-engineering.md)
-
 # Reverse engineering ARCore 1.57
+
+> **Research history.** This is the original research log the toolkit grew
+> from, kept for background reading. The practical guides are
+> [04-profiles.md](04-profiles.md) (profiles, keys, server) and
+> [01-getting-started.md](01-getting-started.md) (installing and using the
+> app).
 
 This is the original research log that the toolkit grew from: how the device
 profile database is laid out, how the key is obfuscated, and how a profile can
