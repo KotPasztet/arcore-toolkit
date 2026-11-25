@@ -18,24 +18,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Release signing key
-        shell: bash
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-            {
-              echo "KS=$RUNNER_TEMP/release.keystore"
-              echo "KS_PASS=${ANDROID_KEYSTORE_PASSWORD:-android}"
-              echo "KEY_ALIAS=${ANDROID_KEY_ALIAS:-debug}"
-              echo "KEY_PASS=${ANDROID_KEY_PASSWORD:-android}"
-            } >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -64,6 +46,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      # The Gradle app build needs platforms;android-35 + build-tools;35.0.0.
+      # The NDK below is only used by the tools/shim build.
       - name: Android SDK packages
         shell: bash
         run: |
@@ -83,12 +72,14 @@ jobs:
       - name: Build APK
         shell: bash
         env:
-          VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: ${{ steps.version.outputs.version_name }}
-          OUT: arcore-toolkit-${{ steps.version.outputs.version_name }}.apk
+          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_NAME: ${{ steps.version.outputs.version_name }}
         run: |
-          cd android
-          ./build.sh
+          ./gradlew :android:assembleDebug --no-daemon \
+            "-PappVersionCode=$APP_VERSION_CODE" \
+            "-PappVersionName=$APP_VERSION_NAME"
+          cp android/build/outputs/apk/debug/app-debug.apk \
+            "arcore-toolkit-$APP_VERSION_NAME.apk"
 
       - name: Build shim
         shell: bash
@@ -111,7 +102,7 @@ jobs:
           make_latest: true
           files: |
             dist/*
-            android/arcore-toolkit-${{ steps.version.outputs.version_name }}.apk
+            arcore-toolkit-${{ steps.version.outputs.version_name }}.apk
             tools/shim/libarcore_sdk_c-${{ steps.version.outputs.version_name }}.so
             tools/shim/libarcore_sdk_c_stock-${{ steps.version.outputs.version_name }}.so
             tools/shim/patch_apk.py
