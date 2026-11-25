@@ -78,8 +78,8 @@ jobs:
           ./gradlew :android:assembleDebug --no-daemon \
             "-PappVersionCode=$APP_VERSION_CODE" \
             "-PappVersionName=$APP_VERSION_NAME"
-          cp android/build/outputs/apk/debug/app-debug.apk \
-            "arcore-toolkit-$APP_VERSION_NAME.apk"
+          APK=$(ls android/build/outputs/apk/debug/*.apk | head -n 1)
+          cp "$APK" "arcore-toolkit-$APP_VERSION_NAME.apk"
 
       - name: Build shim
         shell: bash
