@@ -105,6 +105,10 @@ prototype and a **Calibration** recorder.
 ### 4. ARCore shim (optional, advanced)
 
 ```bash
+# one command: build shim, patch APK, install
+python3 tools/shim/patch_apk.py /path/to/app.apk --build-shim --install
+
+# or manually
 cd tools/shim
 ./extract-real-lib.sh ../../android/deps/arcore-1.57.0.aar   # real lib + SONAME
 ./build.sh                                                   # marker override shim

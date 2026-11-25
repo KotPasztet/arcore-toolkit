@@ -51,15 +51,26 @@ SHIM_INC=passthrough.inc SHIM_NO_OVERRIDES=1 OUT=libarcore_sdk_c_stock.so ./buil
 ## 3. Упаковка
 
 ```bash
+# универсальный Python-патчер (рекомендуется)
+python3 tools/shim/patch_apk.py app.apk --build-shim --install
+
+# или shell-скрипт
 SOURCE_APK=/path/to/app.apk \
 REAL_LIB=libarcore_sdk_c_real.so \
 OUT_APK=app-shim.apk \
 ./package_apk.sh
 ```
 
-`package_apk.sh` убирает оригинальный `libarcore_sdk_c.so`, кладёт шим и настоящую
-библиотеку, выравнивает и подписывает. Ключ по умолчанию —
-`android/debug.keystore`; другой ключ означает сброс данных приложения при установке.
+`patch_apk.py` убирает старые shim/real-библиотеки, кладёт новую пару для
+выбранного ABI (по умолчанию `arm64-v8a`), удаляет старые подписи, выравнивает и
+подписывает APK. Настоящую библиотеку ARCore он умеет доставать из исходного APK
+автоматически; для уже зашимленного APK берёт `libarcore_sdk_c_real.so`.
+`--install` сразу выполняет `adb install -r` на выбранном устройстве.
+
+`package_apk.sh` делает то же самое, но без автоматического извлечения настоящей
+библиотеки. Ключ по умолчанию — `android/debug.keystore`; другой ключ означает
+сброс данных приложения при установке. Если нужно обновление поверх текущей
+установки, передайте `--ks/--key-alias` того ключа, которым подписано приложение.
 
 ## 4. Что переопределяет маркерный шим
 

@@ -51,16 +51,26 @@ SHIM_INC=passthrough.inc SHIM_NO_OVERRIDES=1 OUT=libarcore_sdk_c_stock.so ./buil
 ## 3. Package
 
 ```bash
+# all-in-one Python patcher (recommended)
+python3 tools/shim/patch_apk.py app.apk --build-shim --install
+
+# or the shell script
 SOURCE_APK=/path/to/app.apk \
 REAL_LIB=libarcore_sdk_c_real.so \
 OUT_APK=app-shim.apk \
 ./package_apk.sh
 ```
 
-`package_apk.sh` removes the original `libarcore_sdk_c.so`, adds the shim and the
-real library, aligns and signs.  The signing key defaults to
-`android/debug.keystore`; a different key means the app's data is reset on
-install.
+`patch_apk.py` removes the old shim/real library, adds the new pair for the
+selected ABI (default `arm64-v8a`), strips old signatures, aligns and signs the
+APK.  It can extract the real ARCore library from the source APK automatically;
+for an already shimmed APK it uses `libarcore_sdk_c_real.so`.  `--install` runs
+`adb install -r` on the selected device.
+
+`package_apk.sh` does the same without automatic real-library extraction.
+The signing key defaults to `android/debug.keystore`; a different key means the
+app's data is reset on install.  Use `--ks/--key-alias` with the key the
+currently installed app is signed with if you want an in-place update.
 
 ## 4. What the marker shim overrides
 

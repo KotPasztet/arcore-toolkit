@@ -106,6 +106,11 @@ adb shell monkey -p io.github.nikonektik.arcoretoolkit -c android.intent.categor
 ```bash
 cd tools/shim
 ./extract-real-lib.sh ../../android/deps/arcore-1.57.0.aar   # настоящая библиотека + SONAME
+# одной командой: собрать шим, пропатчить APK, установить
+python3 tools/shim/patch_apk.py /path/to/app.apk --build-shim --install
+
+# или вручную
+cd tools/shim
 ./build.sh                                                   # маркерный шим
 SOURCE_APK=/path/to/app.apk REAL_LIB=libarcore_sdk_c_real.so OUT_APK=app-shim.apk \
   ./package_apk.sh

@@ -122,3 +122,4 @@ jobs:
             android/arcore-toolkit-${{ steps.version.outputs.version_name }}.apk
             tools/shim/libarcore_sdk_c-${{ steps.version.outputs.version_name }}.so
             tools/shim/libarcore_sdk_c_stock-${{ steps.version.outputs.version_name }}.so
+            tools/shim/patch_apk.py
