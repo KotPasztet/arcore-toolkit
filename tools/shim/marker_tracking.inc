@@ -63,6 +63,7 @@ typedef struct {
     int predict_on;
     float lead;
     int predict_ms;             /* maximum extrapolation window */
+    int latency_ms;             /* fallback camera pipeline latency */
 
     int hold_ms;                /* keep tracking this long after last detection */
     int reset_ms;               /* filter reset if measurements are this far apart */
@@ -97,6 +98,7 @@ static MarkerTuning g_mt = {
     .predict_on = 1,
     .lead = 0.8f,
     .predict_ms = 150,
+    .latency_ms = 25,
     .hold_ms = 350,
     .reset_ms = 1000,
     .tag_id = -1,
@@ -178,6 +180,7 @@ static volatile int g_mt_freeze;
 static int g_mt_calls;
 static int64_t g_mt_last_frame_ts;
 static int g_mt_have_frame_ts;
+static int g_mt_ts_logged;
 
 static apriltag_detector_t *g_mt_td;
 static apriltag_family_t *g_mt_tf;
@@ -269,6 +272,8 @@ static void mt_load_tuning(void) {
         t.hold_ms = n;
     if (mt_read_int("predict_ms", &n) && n >= 0 && n <= 1000)
         t.predict_ms = n;
+    if (mt_read_int("latency_ms", &n) && n >= 0 && n <= 200)
+        t.latency_ms = n;
     if (mt_read_int("reset_ms", &n) && n >= 100 && n <= 10000)
         t.reset_ms = n;
     if (mt_read_int("hamming", &n) && n >= 0 && n <= 2)
@@ -300,11 +305,11 @@ static void mt_load_tuning(void) {
         logged = 1;
         shim_log("tune dist=%d(%.4f,%.4f,%.4f,%.4f) tag=%.4f margin=%.0f maxpx=%.1f "
                  "filter=%d jump=%.2f/%.0f predict=%d lead=%.2f hold=%dms "
-                 "decimate=%.1f/%.1f tag_id=%d lock=%d",
+                 "latency=%dms decimate=%.1f/%.1f tag_id=%d lock=%d",
                  t.dist_on, t.k1, t.k2, t.p1, t.p2, t.tag_size, t.min_margin,
                  t.max_px, t.filter_on, t.max_jump_m, t.max_ang_deg,
-                 t.predict_on, t.lead, t.hold_ms, t.decimate_track,
-                 t.decimate_search, t.tag_id, t.lock_tag);
+                 t.predict_on, t.lead, t.hold_ms, t.latency_ms,
+                 t.decimate_track, t.decimate_search, t.tag_id, t.lock_tag);
     }
     pthread_mutex_unlock(&g_mt_tune_lock);
 }
@@ -1261,7 +1266,29 @@ static void mt_capture(const ArSession *session, const ArFrame *frame) {
     g_mq[idx].fy = fy;
     g_mq[idx].cx = cx;
     g_mq[idx].cy = cy;
-    g_mq[idx].capture_ns = now_ns();
+    int64_t enqueue_ns = now_ns();
+    int64_t capture_ns = enqueue_ns;
+    if (frame_ts > 0) {
+        int64_t age = enqueue_ns - frame_ts;
+        // Same clock base (BOOTTIME) and a sane camera latency: use the actual
+        // exposure timestamp.  Otherwise compensate with a conservative
+        // pipeline latency so the world does not follow the camera.
+        if (age >= 0 && age <= 500000000LL) {
+            capture_ns = frame_ts;
+        } else {
+            MarkerTuning t;
+            mt_tuning_snapshot(&t);
+            capture_ns = enqueue_ns - (int64_t)t.latency_ms * 1000000LL;
+        }
+    }
+    g_mq[idx].capture_ns = capture_ns;
+    if (!g_mt_ts_logged) {
+        g_mt_ts_logged = 1;
+        shim_log("timestamp frame=%lld enqueue=%lld age=%.1fms capture=%lld",
+                 (long long)frame_ts, (long long)enqueue_ns,
+                 frame_ts > 0 ? (double)(enqueue_ns - frame_ts) / 1e6 : -1.0,
+                 (long long)capture_ns);
+    }
     g_mq[idx].seq = ++g_mq_seq;
     g_mq[idx].state = 1;
 

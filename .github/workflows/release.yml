@@ -81,6 +81,12 @@ jobs:
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+          ndk_dir=$(ls -d "$ANDROID_HOME/ndk/"* 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$ndk_dir" ]; then
+            "$SDKMANAGER" --install "ndk;27.2.12479018"
+            ndk_dir="$ANDROID_HOME/ndk/27.2.12479018"
+          fi
+          echo "ANDROID_NDK_ROOT=$ndk_dir" >> "$GITHUB_ENV"
 
       - name: Build APK
         shell: bash
@@ -92,6 +98,18 @@ jobs:
           cd android
           ./build.sh
 
+      - name: Build shim
+        shell: bash
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+        run: |
+          cd tools/shim
+          ./build.sh
+          cp libarcore_sdk_c.so "libarcore_sdk_c-${VERSION_NAME}.so"
+          SHIM_INC=passthrough.inc SHIM_NO_OVERRIDES=1 \
+            OUT=libarcore_sdk_c_stock.so ./build.sh
+          cp libarcore_sdk_c_stock.so "libarcore_sdk_c_stock-${VERSION_NAME}.so"
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
@@ -102,3 +120,5 @@ jobs:
           files: |
             dist/*
             android/arcore-toolkit-${{ steps.version.outputs.version_name }}.apk
+            tools/shim/libarcore_sdk_c-${{ steps.version.outputs.version_name }}.so
+            tools/shim/libarcore_sdk_c_stock-${{ steps.version.outputs.version_name }}.so

@@ -126,6 +126,7 @@ The shim reads optional files from the target app's data directory
 | `max_jump`, `max_ang` | outlier rejection against the predicted pose |
 | `filter_off`, `euro` | disable / configure the One Euro filter (`f_min`, `beta_pos`, `beta_rot`) |
 | `predict_off`, `lead`, `predict_ms` | disable / tune pose prediction and its maximum extrapolation |
+| `latency_ms` | fallback camera pipeline latency when ARCore timestamps use an unknown clock base (default 25 ms) |
 | `hold_ms`, `reset_ms` | how long to keep tracking without a detection / when to reset the filter |
 | `decimate` | one or two numbers: tracking and search quad decimation (default `1 1`) |
 | `threads`, `refine` | AprilTag worker threads and edge refinement |

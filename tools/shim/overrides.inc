@@ -38,7 +38,13 @@ typedef struct { uint32_t magic; float m[16]; } FakePose;
 
 static int64_t now_ns(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    /* ARCore camera timestamps are documented as likely CLOCK_BOOTTIME.
+     * Using the same time base lets the tracker compensate for the camera
+     * pipeline latency instead of treating the enqueue time as the capture
+     * time (which made the world follow the camera). */
+    if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+    }
     return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
 }
 
