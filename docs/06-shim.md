@@ -65,7 +65,10 @@ SHIM_INC=passthrough.inc SHIM_NO_OVERRIDES=1 OUT=libarcore_sdk_c_stock.so ./buil
 
 The all-in-one Python patcher builds the shim if asked, replaces the library
 pair for the selected ABI (default `arm64-v8a`), strips old signatures,
-aligns, signs and installs:
+aligns, signs and installs. It also auto-detects the app's package name and
+compiles the shim with `-DTARGET_PKG=<package>`, so the runtime files
+(`tag_size`, `shim.log`, …) are read from that app's own `files/` directory
+(override with `--pkg`):
 
 ```bash
 python3 tools/shim/patch_apk.py app.apk --build-shim --install

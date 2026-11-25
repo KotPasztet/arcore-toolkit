@@ -49,10 +49,11 @@ ELF_MACHINES = {
 }
 
 
-def run(cmd: list[str], cwd: Path | None = None, what: str = "") -> None:
+def run(cmd: list[str], cwd: Path | None = None, what: str = "",
+        env: dict[str, str] | None = None) -> None:
     if what:
         print("+", what)
-    subprocess.run(cmd, cwd=cwd, check=True)
+    subprocess.run(cmd, cwd=cwd, check=True, env=env)
 
 
 def elf_machine(data: bytes) -> tuple[int, int]:
@@ -105,6 +106,38 @@ def find_tool(name: str, override: str | None = None) -> str:
     if not found:
         raise SystemExit(f"{name} not found in PATH")
     return found
+
+
+def detect_package(apk_path: Path, build_tools: Path) -> str:
+    """Package name for -DTARGET_PKG: the shim reads its config files and
+    writes shim.log into /sdcard/Android/data/<pkg>/files/, so it must be
+    compiled with the patched app's own package."""
+    for tool in ("aapt", "aapt2"):
+        binary = build_tools / tool
+        if binary.is_file():
+            try:
+                out = subprocess.run([str(binary), "dump", "badging", str(apk_path)],
+                                     capture_output=True, text=True, check=True)
+            except subprocess.SubprocessError:
+                continue
+            m = re.search(r"^package: name='([^']+)'", out.stdout, re.M)
+            if m:
+                return m.group(1)
+    # Fallback: scan the binary manifest for a dot-separated identifier.
+    try:
+        with zipfile.ZipFile(apk_path) as zf:
+            data = zf.read("AndroidManifest.xml")
+    except (KeyError, zipfile.BadZipFile):
+        return ""
+    best = ""
+    for raw in re.findall(rb"(?:[a-z0-9_]{2,}\.){2,}[a-z0-9_]{2,}", data):
+        s = raw.decode()
+        if s.startswith(("android.", "http")) or s.endswith(
+                ("provider", "fileprovider", "content")):
+            continue
+        if len(s) > len(best):
+            best = s
+    return best
 
 
 def abis_in_apk(zf: zipfile.ZipFile) -> list[str]:
@@ -242,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
                         help=f"shim library (default: {DEFAULT_SHIM})")
     parser.add_argument("--real-lib", type=Path,
                         help="real ARCore SDK library (default: extract from the APK)")
+    parser.add_argument("--pkg", default=None,
+                        help="target package name (default: auto-detect from the APK)")
     parser.add_argument("--abi", action="append", default=[],
                         help="ABI to patch (repeatable; default: auto, prefers arm64-v8a)")
     parser.add_argument("--build-shim", action="store_true",
@@ -264,8 +299,20 @@ def main(argv: list[str] | None = None) -> int:
     if source.suffix.lower() != ".apk":
         raise SystemExit("source must be a .apk")
 
+    bt = Path(args.build_tools).resolve() if args.build_tools else find_build_tools()
+    pkg = args.pkg or detect_package(source, bt)
+    if not pkg:
+        pkg = "com.kotpasztet.apace"
+        print("WARNING: package not detected; shim built with default", pkg)
+    print("target package:", pkg)
+    print("config dir (tag_size, shim.log, ...):", f"/sdcard/Android/data/{pkg}/files/")
+
     if args.build_shim:
-        run([str(TOOL_DIR / "build.sh")], cwd=TOOL_DIR, what="build shim")
+        env = dict(os.environ, DEFINES=f'-DTARGET_PKG="{pkg}"')
+        run([str(TOOL_DIR / "build.sh")], cwd=TOOL_DIR, what="build shim", env=env)
+    else:
+        print("NOTE: prebuilt shim used; it reads config from the APP_DIR it was "
+              "compiled with — rebuild with --build-shim to target this package")
     shim = args.shim.resolve()
     if not shim.is_file():
         raise SystemExit(f"shim not found: {shim} (use --build-shim or --shim)")
@@ -273,8 +320,6 @@ def main(argv: list[str] | None = None) -> int:
     real_explicit = args.real_lib.resolve() if args.real_lib else None
     if real_explicit is not None and not real_explicit.is_file():
         raise SystemExit(f"real library not found: {real_explicit}")
-
-    bt = Path(args.build_tools).resolve() if args.build_tools else find_build_tools()
     zipalign = bt / "zipalign"
     apksigner = bt / "apksigner"
     for tool in (zipalign, apksigner):
