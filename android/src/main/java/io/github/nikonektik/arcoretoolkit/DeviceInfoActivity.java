@@ -8,11 +8,12 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 import java.util.Locale;
@@ -34,12 +35,12 @@ public class DeviceInfoActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView title = new TextView(this);
-        title.setText("Device info / intrinsics");
+        title.setText(getString(R.string.device_title));
         title.setTextSize(20f);
         root.addView(title);
 
-        Button copy = new Button(this);
-        copy.setText("Copy as text");
+        MaterialButton copy = new MaterialButton(this);
+        copy.setText(getString(R.string.device_copy));
         copy.setOnClickListener(v -> copyToClipboard());
         root.addView(copy);
 
@@ -65,10 +66,10 @@ public class DeviceInfoActivity extends Activity {
     }
 
     private String dumpCamera() {
-        StringBuilder sb = new StringBuilder("== camera ==\n");
+        StringBuilder sb = new StringBuilder(getString(R.string.device_section_camera) + "\n");
         CameraSpec ci = CameraSpec.read(this);
         if (ci == null) {
-            return sb.append("no back camera found\n").toString();
+            return sb.append(getString(R.string.device_no_back_camera)).append('\n').toString();
         }
         sb.append("camera id: ").append(ci.cameraId).append('\n');
         sb.append("active array: ").append(ci.activeArray).append('\n');
@@ -112,7 +113,7 @@ public class DeviceInfoActivity extends Activity {
     }
 
     private String dumpImu() {
-        StringBuilder sb = new StringBuilder("== sensors ==\n");
+        StringBuilder sb = new StringBuilder(getString(R.string.device_section_sensors) + "\n");
         try {
             SensorManager sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
             List<Sensor> sensors = sm.getSensorList(Sensor.TYPE_ALL);
@@ -138,9 +139,10 @@ public class DeviceInfoActivity extends Activity {
             ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             if (cm == null) return;
             cm.setPrimaryClip(ClipData.newPlainText("device info", summary));
-            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.device_toast_copied), Toast.LENGTH_SHORT).show();
         } catch (Throwable t) {
-            Toast.makeText(this, "Copy failed: " + t, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.device_toast_copy_failed, t),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 }

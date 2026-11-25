@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 theme; adapts to light/dark system setting. -->
+    <style name="Theme.ArCoreToolkit" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <!-- Always-dark variant for the crash screen (runs in the :crash process
+         where dynamic color is intentionally not applied). -->
+    <style name="Theme.ArCoreToolkit.Crash" parent="Theme.Material3.Dark.NoActionBar" />
+</resources>

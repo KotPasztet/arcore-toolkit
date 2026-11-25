@@ -13,6 +13,12 @@ android/*.idsig
 android/debug.keystore
 android/arcore-toolkit.apk
 
+# gradle
+.gradle/
+build/
+captures/
+local.properties
+
 # shim build artefacts
 tools/shim/shim.c
 tools/shim/*.so

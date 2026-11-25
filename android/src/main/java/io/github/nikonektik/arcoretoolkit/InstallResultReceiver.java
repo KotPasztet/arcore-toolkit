@@ -19,14 +19,16 @@ public class InstallResultReceiver extends BroadcastReceiver {
                 try {
                     context.startActivity(confirm);
                 } catch (Throwable t) {
-                    Toast.makeText(context, "Cannot open the installer: " + t,
+                    Toast.makeText(context,
+                            context.getString(R.string.install_toast_open_failed, t),
                             Toast.LENGTH_LONG).show();
                 }
             }
             return;
         }
         if (status == PackageInstaller.STATUS_SUCCESS) {
-            Toast.makeText(context, "ARCore installed", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, context.getString(R.string.install_toast_success),
+                    Toast.LENGTH_LONG).show();
             try {
                 Intent launch = new Intent(context, MainActivity.class);
                 launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -35,9 +37,8 @@ public class InstallResultReceiver extends BroadcastReceiver {
             }
         } else {
             String message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            Toast.makeText(context,
-                    "ARCore install failed" + (message == null ? "" : ": " + message),
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(context, context.getString(R.string.install_toast_failed,
+                    message == null ? "" : ": " + message), Toast.LENGTH_LONG).show();
         }
     }
 }

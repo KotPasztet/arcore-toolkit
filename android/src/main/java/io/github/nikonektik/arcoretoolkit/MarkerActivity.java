@@ -9,7 +9,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
@@ -21,15 +20,19 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.util.Log;
+import android.text.InputType;
 import android.util.Range;
 import android.util.Size;
 import android.view.Gravity;
 import android.view.Surface;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
+
+import com.google.android.material.button.MaterialButton;
 
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.CvType;
@@ -59,8 +62,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class MarkerActivity extends Activity {
     private static final String TAG = "MARKER";
 
-    // Printed tag: outer black square 150 mm, print scale assumed 0.99.
-    private static final double TAG_SIZE = 0.150 * 0.99;
+    // Printed tag: outer black square as chosen in the tag size field /
+    // print dialog (default 150 mm = 0.1485 m with the print scale), so a
+    // measured value can be entered for the distance math.
+    private volatile double tagSizeM =
+            TagPdfExporter.DEFAULT_TAG_MM / 1000.0 * TagPdfExporter.PRINT_SCALE;
+    private EditText tagSizeInput;
 
     private boolean opencvReady;
     private int detW = 640;
@@ -80,7 +87,6 @@ public class MarkerActivity extends Activity {
     private ImageReader reader;
     private volatile boolean opening;
     private String cameraId = "0";
-    private int sensorOrientation = 90;
 
     private final ExecutorService detectorPool = Executors.newSingleThreadExecutor();
     private final AtomicBoolean busy = new AtomicBoolean(false);
@@ -106,8 +112,7 @@ public class MarkerActivity extends Activity {
         } catch (Throwable t) {
             ToolkitLog.e(TAG, "OpenCV native library unavailable", t);
             TextView message = new TextView(this);
-            message.setText("Marker AR is unavailable on this device:\n\n"
-                    + "OpenCV native library could not be loaded.\n" + t);
+            message.setText(getString(R.string.marker_unavailable, t));
             message.setTextSize(16f);
             message.setPadding(48, 96, 48, 48);
             setContentView(message);
@@ -121,6 +126,9 @@ public class MarkerActivity extends Activity {
         params.set_cornerRefinementMethod(Objdetect.CORNER_REFINE_SUBPIX);
         aruco = new ArucoDetector(Objdetect.getPredefinedDictionary(Objdetect.DICT_APRILTAG_36h11), params);
         updateIntrinsics();
+        tagSizeM = TagPdfExporter.tagSizeMetres(this);
+        ToolkitLog.i(TAG, "tag size mm=" + TagPdfExporter.getTagSizeMm(this)
+                + " size=" + tagSizeM);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -142,6 +150,40 @@ public class MarkerActivity extends Activity {
         previewBox.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
         FrameLayout.LayoutParams boxLp = new FrameLayout.LayoutParams(boxW, boxH, Gravity.CENTER);
         root.addView(previewBox, boxLp);
+
+        // Header overlay: print the physical marker without leaving the
+        // screen, and enter the measured tag size used by the distance math.
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(16, 24, 16, 8);
+        MaterialButton printTag = new MaterialButton(this);
+        printTag.setText(getString(R.string.marker_btn_print_tag));
+        printTag.setOnClickListener(v -> TagPdfExporter.showPrintDialog(this));
+        LinearLayout.LayoutParams printLp = new LinearLayout.LayoutParams(-1, -2, 1f);
+        printLp.setMargins(0, 0, dp(8), 0);
+        header.addView(printTag, printLp);
+        tagSizeInput = new EditText(this);
+        tagSizeInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        tagSizeInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        tagSizeInput.setHint(getString(R.string.marker_tag_size_hint));
+        tagSizeInput.setText(String.valueOf(TagPdfExporter.getTagSizeMm(this)));
+        tagSizeInput.setTextColor(Color.WHITE);
+        tagSizeInput.setHintTextColor(0xB3FFFFFF);
+        int inputWidth = dp(110);
+        tagSizeInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                applyTagSizeInput();
+                return true;
+            }
+            return false;
+        });
+        tagSizeInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) applyTagSizeInput();
+        });
+        header.addView(tagSizeInput, new LinearLayout.LayoutParams(inputWidth, -2));
+        root.addView(header, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+
         setContentView(root);
 
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -158,6 +200,35 @@ public class MarkerActivity extends Activity {
         }
     }
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    /** Applies the tag size entered in the header field to the pose math. */
+    private void applyTagSizeInput() {
+        int mm;
+        try {
+            mm = Integer.parseInt(tagSizeInput.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            mm = -1;
+        }
+        if (mm < TagPdfExporter.MIN_TAG_MM || mm > TagPdfExporter.MAX_REQUESTED_TAG_MM) {
+            Toast.makeText(this, getString(R.string.marker_print_toast_invalid),
+                    Toast.LENGTH_LONG).show();
+            tagSizeInput.setText(String.valueOf(TagPdfExporter.getTagSizeMm(this)));
+            tagSizeInput.setSelection(tagSizeInput.getText().length());
+            return;
+        }
+        tagSizeInput.setText(String.valueOf(mm));
+        tagSizeInput.setSelection(tagSizeInput.getText().length());
+        tagSizeM = mm / 1000.0 * TagPdfExporter.PRINT_SCALE;
+        getSharedPreferences(TagPdfExporter.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putInt(TagPdfExporter.PREF_TAG_SIZE_MM, mm).apply();
+        Toast.makeText(this, getString(R.string.marker_tag_size_applied, mm),
+                Toast.LENGTH_SHORT).show();
+        ToolkitLog.i(TAG, "tag size mm=" + mm + " size=" + tagSizeM);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -170,6 +241,11 @@ public class MarkerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // The print dialog may have changed the tag size while we were paused.
+        if (opencvReady && tagSizeInput != null && !tagSizeInput.hasFocus()) {
+            tagSizeM = TagPdfExporter.tagSizeMetres(this);
+            tagSizeInput.setText(String.valueOf(TagPdfExporter.getTagSizeMm(this)));
+        }
         if (opencvReady
                 && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
                 && cameraDevice == null) {
@@ -270,7 +346,8 @@ public class MarkerActivity extends Activity {
             CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             if (cm == null) {
                 opening = false;
-                Toast.makeText(this, "Camera service unavailable", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.marker_toast_camera_service),
+                        Toast.LENGTH_LONG).show();
                 return;
             }
             CameraCharacteristics chosen = null;
@@ -285,7 +362,8 @@ public class MarkerActivity extends Activity {
             }
             if (chosen == null) {
                 opening = false;
-                Toast.makeText(this, "No back camera found", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.marker_toast_no_back_camera),
+                        Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -334,14 +412,16 @@ public class MarkerActivity extends Activity {
                     camera.close();
                     cameraDevice = null;
                     runOnUiThread(() -> Toast.makeText(MarkerActivity.this,
-                            "Camera error " + error, Toast.LENGTH_LONG).show());
+                            getString(R.string.marker_toast_camera_error, error),
+                            Toast.LENGTH_LONG).show());
                 }
             }, bgHandler);
             ToolkitLog.i(TAG, "camera=" + cameraId + " size=" + detW + "x" + detH);
         } catch (Throwable t) {
             opening = false;
             ToolkitLog.e(TAG, "openCamera failed", t);
-            runOnUiThread(() -> Toast.makeText(this, "Camera unavailable: " + t,
+            runOnUiThread(() -> Toast.makeText(this,
+                    getString(R.string.marker_toast_camera_unavailable, t),
                     Toast.LENGTH_LONG).show());
         }
     }
@@ -377,7 +457,7 @@ public class MarkerActivity extends Activity {
                     try { cameraDevice.close(); } catch (Throwable ignored) {}
                     cameraDevice = null;
                     runOnUiThread(() -> Toast.makeText(MarkerActivity.this,
-                            "Camera stream could not be configured", Toast.LENGTH_LONG).show());
+                            getString(R.string.marker_toast_session_failed), Toast.LENGTH_LONG).show());
                 }
             }, bgHandler);
         } catch (Throwable t) {
@@ -491,8 +571,8 @@ public class MarkerActivity extends Activity {
 
             img = new MatOfPoint2f(mc[0], mc[1], mc[2], mc[3]);
             obj = new MatOfPoint3f(
-                    new Point3(0, 0, 0), new Point3(TAG_SIZE, 0, 0),
-                    new Point3(TAG_SIZE, TAG_SIZE, 0), new Point3(0, TAG_SIZE, 0));
+                    new Point3(0, 0, 0), new Point3(tagSizeM, 0, 0),
+                    new Point3(tagSizeM, tagSizeM, 0), new Point3(0, tagSizeM, 0));
             rvec = new Mat();
             tvec = new Mat();
             boolean ok = Calib3d.solvePnP(obj, img, K, D, rvec, tvec);
@@ -512,8 +592,8 @@ public class MarkerActivity extends Activity {
             }
             err /= 4;
 
-            double s = TAG_SIZE * 0.6;
-            double x0 = (TAG_SIZE - s) / 2, x1 = x0 + s;
+            double s = tagSizeM * 0.6;
+            double x0 = (tagSizeM - s) / 2, x1 = x0 + s;
             cubeObj = new MatOfPoint3f(
                     new Point3(x0, x0, 0), new Point3(x1, x0, 0),
                     new Point3(x1, x1, 0), new Point3(x0, x1, 0),
@@ -578,7 +658,6 @@ public class MarkerActivity extends Activity {
         private volatile Bitmap frame;
         private volatile int imageW = 640, imageH = 480;
         private final Object lock;
-        private final RectF dst = new RectF();
         private final Matrix frameMatrix = new Matrix();
         private volatile Point[] marker;
         private volatile Point[] cube;
@@ -681,12 +760,14 @@ public class MarkerActivity extends Activity {
                         c.drawLine(cx[e[0]], cy[e[0]], cx[e[1]], cy[e[1]], paint);
                     }
                 }
-                c.drawText("ID " + id + "  dist " + String.format("%.2f", dist) + " m"
-                        + "  err " + String.format("%.2f", err) + " px", 24, getHeight() - 70, text);
+                c.drawText(getContext().getString(R.string.marker_overlay_pose,
+                                id, (float) dist, (float) err), 24, getHeight() - 70, text);
             } else {
-                c.drawText("No marker", 24, getHeight() - 70, text);
+                c.drawText(getContext().getString(R.string.marker_overlay_no_marker),
+                        24, getHeight() - 70, text);
             }
-            c.drawText("frames " + frames + "  detected " + detections, 24, getHeight() - 24, text);
+            c.drawText(getContext().getString(R.string.marker_overlay_stats, frames, detections),
+                    24, getHeight() - 24, text);
         }
     }
 }

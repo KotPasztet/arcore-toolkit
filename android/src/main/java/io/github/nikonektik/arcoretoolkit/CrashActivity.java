@@ -10,11 +10,12 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -41,7 +42,7 @@ public class CrashActivity extends Activity {
         path = file.getAbsolutePath();
         report = read(file);
         if (report.isEmpty()) {
-            report = "No crash report was written.\n\nExpected file:\n" + path;
+            report = getString(R.string.crash_no_report, path);
         }
 
         LinearLayout root = new LinearLayout(this);
@@ -50,14 +51,14 @@ public class CrashActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView title = new TextView(this);
-        title.setText("ARCore Toolkit crashed");
+        title.setText(getString(R.string.crash_title));
         title.setTextColor(Color.WHITE);
         title.setTextSize(22f);
         title.setGravity(Gravity.START);
         root.addView(title);
 
         TextView where = new TextView(this);
-        where.setText("Saved log: " + path);
+        where.setText(getString(R.string.crash_saved_log, path));
         where.setTextColor(0xFFB0B0B0);
         where.setTextSize(11f);
         where.setTextIsSelectable(true);
@@ -79,10 +80,10 @@ public class CrashActivity extends Activity {
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
-        Button copy = button("Copy");
-        Button share = button("Share");
-        Button restart = button("Restart");
-        Button close = button("Close");
+        MaterialButton copy = button(getString(R.string.crash_btn_copy));
+        MaterialButton share = button(getString(R.string.crash_btn_share));
+        MaterialButton restart = button(getString(R.string.crash_btn_restart));
+        MaterialButton close = button(getString(R.string.common_close));
         buttons.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
         buttons.addView(share, new LinearLayout.LayoutParams(0, -2, 1f));
         buttons.addView(restart, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -92,19 +93,20 @@ public class CrashActivity extends Activity {
         copy.setOnClickListener(v -> {
             ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             if (cm != null) {
-                cm.setPrimaryClip(ClipData.newPlainText("ARCore Toolkit crash", report));
-                Toast.makeText(this, "Crash log copied", Toast.LENGTH_SHORT).show();
+                cm.setPrimaryClip(ClipData.newPlainText(getString(R.string.crash_clip_label), report));
+                Toast.makeText(this, getString(R.string.crash_toast_copied), Toast.LENGTH_SHORT).show();
             }
         });
         share.setOnClickListener(v -> {
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType("text/plain");
-            send.putExtra(Intent.EXTRA_SUBJECT, "ARCore Toolkit crash report");
+            send.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_share_subject));
             send.putExtra(Intent.EXTRA_TEXT, report);
             try {
-                startActivity(Intent.createChooser(send, "Share crash log"));
+                startActivity(Intent.createChooser(send, getString(R.string.crash_share_chooser)));
             } catch (Throwable t) {
-                Toast.makeText(this, "Cannot share: " + t, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.crash_toast_share_failed, t),
+                        Toast.LENGTH_LONG).show();
             }
         });
         restart.setOnClickListener(v -> {
@@ -113,7 +115,8 @@ public class CrashActivity extends Activity {
                 launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(launch);
             } catch (Throwable t) {
-                Toast.makeText(this, "Cannot restart: " + t, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.crash_toast_restart_failed, t),
+                        Toast.LENGTH_LONG).show();
             }
             finish();
         });
@@ -122,9 +125,10 @@ public class CrashActivity extends Activity {
         setContentView(root);
     }
 
-    private Button button(String text) {
-        Button button = new Button(this);
+    private MaterialButton button(String text) {
+        MaterialButton button = new MaterialButton(this);
         button.setText(text);
+        button.setAllCaps(false);
         button.setTextSize(12f);
         return button;
     }

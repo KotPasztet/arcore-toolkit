@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">ARCore Toolkit</string>
+
+    <!-- Common -->
+    <string name="common_close">Закрыть</string>
+    <string name="common_cancel">Отмена</string>
+
+    <!-- Main screen -->
+    <string name="main_btn_profiles">Профили…</string>
+    <string name="main_btn_device">О устройстве</string>
+    <string name="main_btn_marker">Маркер-трекинг</string>
+    <string name="main_btn_calibration">Калибровка</string>
+    <string name="main_btn_print_tag">Печать маркера (PDF)</string>
+    <string name="main_hud_title">ARCore Toolkit</string>
+    <string name="main_hud_profile">Профиль: %1$s</string>
+    <string name="main_hud_tap_hint">Коснитесь в любом месте, чтобы поставить куб: на распознанную плоскость, если она есть, иначе — временный якорь относительно камеры</string>
+    <string name="main_hud_status">ARCore Toolkit\nПрофиль: %1$s\nТрекинг: %2$s\nПлоскости: %3$d\nКубы: %4$d\nКоснитесь в любом месте, чтобы поставить</string>
+    <string name="main_toast_no_plane_anchor">Плоскости нет: используется временный якорь, объект может смещаться</string>
+    <string name="main_session_failed_title">Сбой сессии ARCore</string>
+
+    <!-- Profile server -->
+    <string name="main_server_title">Сервер профилей</string>
+    <string name="main_server_message">Базовый URL switch-сервера (см. tools/server). URL профиля выглядит как &lt;base&gt;&lt;name&gt;/&lt;version&gt;.zip</string>
+    <string name="main_server_hint">https://host:9443/arcore/switch/</string>
+    <string name="main_server_save">Сохранить</string>
+    <string name="main_toast_server_saved">Сервер сохранён</string>
+    <string name="main_toast_set_server_first">Сначала укажите сервер профилей</string>
+    <string name="main_profiles_unconfigured_title">Сервер профилей не задан</string>
+    <string name="main_profiles_unconfigured_message">Профили скачиваются с switch-сервера и настроены под конкретную камеру. Сначала укажите URL сервера или попробуйте встроенный сервер по умолчанию.</string>
+    <string name="main_profiles_unconfigured_set">Указать URL сервера…</string>
+    <string name="main_profiles_unconfigured_default">Сервер по умолчанию</string>
+    <string name="main_toast_loading_profiles">Загрузка профилей…</string>
+    <string name="main_profiles_error_message">Не удалось загрузить список профилей:\n%1$s</string>
+    <string name="main_profiles_empty_message">Сервер не вернул ни одного профиля.</string>
+    <string name="main_profiles_server_url">URL сервера…</string>
+    <string name="main_profiles_title">Профили</string>
+    <string name="main_profiles_info">Сервер: %1$s\nУстройство: %2$s  ключ: %3$s</string>
+    <string name="main_profiles_info_camera">Камера: fx %1$.1f, fy %2$.1f</string>
+    <string name="main_profiles_auto">Авто: подобрать под эту камеру</string>
+    <string name="main_profiles_advanced">Тонкая настройка…</string>
+    <string name="main_profiles_nearest_suffix">  ★</string>
+    <string name="profiles_entry_format">%1$s  (fx %2$.1f)</string>
+
+    <!-- Applying profiles -->
+    <string name="main_toast_applying">Скачивается профиль «%1$s»… ARCore перезапустит камеру, когда он будет готов</string>
+    <string name="main_toast_switch_failed">Не удалось переключить: %1$s</string>
+    <string name="main_recovery_title">ARCore отклонил профиль</string>
+    <string name="main_recovery_message">ARCore создал сессию, но не смог запустить камеру с этим профилем. Вероятно, он снят с телефона с другой конфигурацией камеры.</string>
+    <string name="main_recovery_reapply">Применить снова: %1$s</string>
+    <string name="main_recovery_default_label">последний рабочий профиль</string>
+    <string name="main_toast_camera_unavailable">Характеристики камеры недоступны</string>
+    <string name="main_toast_no_usable_profiles">Сервер не вернул пригодных профилей</string>
+    <string name="main_toast_closest">Ближайший: %1$s (fx %2$.1f) → %3$.1f</string>
+    <string name="main_toast_no_profiles">Профили не загружены</string>
+
+    <!-- ARCore availability -->
+    <string name="main_unavailable_title">ARCore недоступен</string>
+    <string name="main_unavailable_message">ARCore сообщает: %1$s\n\nМожно попробовать установить или обновить Google Play Services for AR.</string>
+    <string name="main_unavailable_install">Установить ARCore…</string>
+    <string name="main_unavailable_hint">ARCore сообщает: %1$s\n\nУстановите или обновите Google Play Services for AR и профиль устройства, затем снова откройте этот экран. См. docs/04-profiles.md.</string>
+
+    <!-- Advanced tuning dialog -->
+    <string name="tune_title">Настройка профиля ARCore</string>
+    <string name="tune_intro">Пустое поле — оставить значение базового профиля. После «Применить» профиль пересобирается на сервере, а ARCore перезапускается.</string>
+    <string name="tune_base_profile">Базовый профиль (донор):</string>
+    <string name="tune_section_camera">Камера (640×480)</string>
+    <string name="tune_section_sync">Синхронизация камеры и IMU</string>
+    <string name="tune_section_lever">Положение камеры относительно IMU (lever arm), метры</string>
+    <string name="tune_section_rotation">Поворот камеры к IMU (кватернион w, x, y, z)</string>
+    <string name="tune_section_imu">IMU</string>
+    <string name="tune_section_depth">Глубина и плоскости</string>
+    <string name="tune_apply">Применить</string>
+    <string name="tune_preset_zero_tsa">Пресет: без сдвига времени (tsa=0)</string>
+    <string name="tune_hint_fx">Фокусное расстояние по X в пикселях для кадра 640×480. Влияет на масштаб и глубину.</string>
+    <string name="tune_hint_fy">Фокусное расстояние по Y в пикселях. Обычно равно focal x.</string>
+    <string name="tune_hint_cx">Главная точка по X. Паспортное значение — 320. Калибровка давала 302–310; если плоскости смещены вбок, попробуйте 302.</string>
+    <string name="tune_hint_cy">Главная точка по Y. Паспортное значение — 240.</string>
+    <string name="tune_hint_k0">Радиальная дисторсия k0. Обычно около нуля.</string>
+    <string name="tune_hint_k1">Дисторсия k1. Обычно 0; большие значения ломают трекинг.</string>
+    <string name="tune_hint_k2">Дисторсия k2. Обычно 0.</string>
+    <string name="tune_hint_rs">Реальное время считывания кадра из метаданных сенсора — 26 763 333 нс (26.76 мс). Неверное значение сильно ломает глубину при движении.</string>
+    <string name="tune_hint_tsa">Сдвиг метки времени камеры относительно IMU. Отрицательное значение — камера считается «раньше». Подбирается по логам DESYNC.</string>
+    <string name="tune_hint_tb">1 — RUNTIME_CHECK_REQUIRED, 2 — TRUSTED_AS_BOOTTIME. Обычно подходит значение 2.</string>
+    <string name="tune_hint_rss">1 — из профиля, 2 — IMAGE_METADATA. Если камера отдаёт readout-метки, попробуйте 2.</string>
+    <string name="tune_hint_px">Сдвиг IMU по X в системе камеры. 0 — безопасный вариант, если реальное плечо неизвестно.</string>
+    <string name="tune_hint_py">Сдвиг IMU по Y. Обычно 0–0.06.</string>
+    <string name="tune_hint_pz">Сдвиг IMU по Z (вдоль оптической оси). Реально не больше ±0.01; большие значения физически невозможны.</string>
+    <string name="tune_hint_qw">Компонента w кватерниона. ≈ 0.0015.</string>
+    <string name="tune_hint_qx">Компонента x. ≈ −0.706.</string>
+    <string name="tune_hint_qy">Компонента y. ≈ 0.708.</string>
+    <string name="tune_hint_qz">Компонента z. ≈ −0.001.</string>
+    <string name="tune_hint_gsx">Масштаб гироскопа по X. ARCore онлайн оценивает ≈1.03.</string>
+    <string name="tune_hint_gsy">Масштаб гироскопа по Y. ARCore оценивает ≈1.015.</string>
+    <string name="tune_hint_gsz">Масштаб гироскопа по Z. ARCore оценивает ≈1.002.</string>
+    <string name="tune_hint_asx">Масштаб акселерометра по X. Норма ≈ 1.0.</string>
+    <string name="tune_hint_asy">Масштаб акселерометра по Y. Норма ≈ 1.0.</string>
+    <string name="tune_hint_asz">Масштаб акселерометра по Z. Норма ≈ 1.0.</string>
+    <string name="tune_hint_gn">Шум гироскопа. Меньше — больше доверия IMU; больше — больше доверия камере. Generic-значение 0.0005309.</string>
+    <string name="tune_hint_an">Шум акселерометра. Generic-значение 0.0048836.</string>
+    <string name="tune_hint_gbx">Начальное смещение гироскопа по X, рад/с. Измерено на неподвижном участке.</string>
+    <string name="tune_hint_gby">Начальное смещение гироскопа по Y, рад/с.</string>
+    <string name="tune_hint_gbz">Начальное смещение гироскопа по Z, рад/с.</string>
+    <string name="tune_hint_depth">Depth API: 1 — выключен, 2 — включён. Плоскости используют ML-глубину.</string>
+
+    <!-- Calibration -->
+    <string name="calib_instructions">Калибровка Kalibr\n1. AprilGrid 6×6 уже напечатан (tagSize≈24.75 мм).\n2. Подойди близко: мишень должна занимать БОЛЬШЕ ПОЛОВИНЫ кадра.\n3. Старт → первые 5 с держи неподвижно.\n4. 60–90 с плавно води вокруг мишени:\n   вперёд/назад, влево/вправо, вверх/вниз, наклоны.\n5. Стоп.</string>
+    <string name="calib_status_ready">Готов к записи.</string>
+    <string name="calib_details">Подробная инструкция</string>
+    <string name="calib_start">Старт</string>
+    <string name="calib_stop">Стоп</string>
+    <string name="calib_details_title">Как калибровать</string>
+    <string name="calib_details_ok">Понятно</string>
+    <string name="calib_details_text">1. AprilGrid 6×6 уже напечатан:\n   tagCols=6, tagRows=6, tagSize≈0.02475 м, tagSpacing=0.3.\n2. Наклей на жёсткую ровную основу, положи на стол.\n3. Включи яркий свет: чем светлее, тем короче выдержка и меньше смаз.\n4. Подойди так, чтобы мишень занимала БОЛЬШЕ ПОЛОВИНЫ кадра\n   (примерно 25–40 см от телефона). Не отходи далеко!\n5. Нажми «Старт». Первые 5 секунд держи телефон неподвижно.\n6. Затем 60–90 секунд плавно води телефоном вокруг мишени:\n   вперёд/назад, влево/вправо, вверх/вниз, наклоны (pitch/yaw/roll).\n7. Держи мишень в кадре, двигайся медленно, без смаза и рывков.\n8. Нажми «Стоп». Данные сохранятся в память приложения.\n\nЗапись идёт в ч/б 1280×960, ~20 кадров/с, IMU ~400 Гц.\n\nЭкспорт (из debug-сборки):\nadb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib &gt; calib.tar\n\nДальше на компьютере: распаковать, собрать ROS bag и прогнать Kalibr.</string>
+    <string name="calib_status_recording">Запись: %1$d с\nКадров: %2$d   IMU: %3$d\nПапка: %4$s</string>
+    <string name="calib_status_done">Готово. Кадров: %1$d, IMU: %2$d\nПапка: %3$s</string>
+    <string name="calib_toast_no_back_camera">Задняя камера не найдена</string>
+    <string name="calib_toast_camera_unavailable">Камера недоступна: %1$s</string>
+    <string name="calib_toast_session_failed">Не удалось настроить камеру</string>
+    <string name="calib_toast_camera_not_ready">Камера ещё не готова</string>
+    <string name="calib_toast_folder_failed">Не удалось создать папку</string>
+    <string name="calib_toast_recording_started">Запись начата</string>
+    <string name="calib_toast_start_error">Ошибка старта: %1$s</string>
+    <string name="calib_toast_recording_stopped">Запись остановлена</string>
+
+    <!-- Marker AR -->
+    <string name="marker_unavailable">Marker AR недоступен на этом устройстве:\n\nНе удалось загрузить нативную библиотеку OpenCV.\n%1$s</string>
+    <string name="marker_overlay_no_marker">Нет маркера</string>
+    <string name="marker_overlay_pose">ID %1$d  дист %2$.2f м  ошибка %3$.2f px</string>
+    <string name="marker_overlay_stats">кадров %1$d  найдено %2$d</string>
+    <string name="marker_toast_camera_service">Служба камеры недоступна</string>
+    <string name="marker_toast_no_back_camera">Задняя камера не найдена</string>
+    <string name="marker_toast_camera_error">Ошибка камеры %1$d</string>
+    <string name="marker_toast_camera_unavailable">Камера недоступна: %1$s</string>
+    <string name="marker_toast_session_failed">Не удалось настроить поток камеры</string>
+    <string name="marker_btn_print_tag">Печать маркера (A4 PDF)</string>
+    <string name="marker_tag_size_hint">Размер тега, мм (по умолчанию 150)</string>
+    <string name="marker_tag_size_applied">Размер тега для расчёта дистанции: %1$d мм</string>
+    <string name="marker_print_title">Печать AprilTag (A4 PDF)</string>
+    <string name="marker_print_explainer">Создаёт печатный PDF A4: AprilTag 36h11 (ID 0), масштабная линейка 100 мм и инструкция по печати. Внешний чёрный квадрат печатается точно указанного размера.</string>
+    <string name="marker_print_hint">Размер тега, мм (40–300, по умолчанию 150)</string>
+    <string name="marker_print_create">Создать PDF</string>
+    <string name="marker_print_toast_working">Создание PDF…</string>
+    <string name="marker_print_toast_saved">Сохранено в Downloads: %1$s</string>
+    <string name="marker_print_share_chooser">Поделиться PDF с маркером</string>
+    <string name="marker_print_toast_invalid">Введите размер от 40 до 300 мм</string>
+    <string name="marker_print_too_large">%1$d мм не помещается на A4 вместе с тихой зоной — максимум 160 мм</string>
+    <string name="marker_print_toast_failed">Не удалось сохранить PDF: %1$s</string>
+
+    <!-- Tag PDF sheet -->
+    <string name="tagpdf_caption">AprilTag 36h11 · ID 0 · размер тега %1$d мм</string>
+    <string name="tagpdf_instructions_1">Печать в масштабе 100% / «фактический размер» на A4. Матовая бумага, наклейте на жёсткую основу.</string>
+    <string name="tagpdf_instructions_2">Измерьте масштабную линейку: если она не 100 мм, скорректируйте размер тега пропорционально.</string>
+    <string name="tagpdf_scale_bar">100 мм</string>
+
+    <!-- Device info -->
+    <string name="device_title">О устройстве / интринсики</string>
+    <string name="device_copy">Скопировать текстом</string>
+    <string name="device_section_camera">== камера ==</string>
+    <string name="device_section_sensors">== сенсоры ==</string>
+    <string name="device_no_back_camera">задняя камера не найдена</string>
+    <string name="device_toast_copied">Скопировано</string>
+    <string name="device_toast_copy_failed">Ошибка копирования: %1$s</string>
+
+    <!-- Crash screen -->
+    <string name="crash_title">Сбой ARCore Toolkit</string>
+    <string name="crash_saved_log">Сохранённый лог: %1$s</string>
+    <string name="crash_no_report">Отчёт о сбое не был записан.\n\nОжидаемый файл:\n%1$s</string>
+    <string name="crash_btn_copy">Копировать</string>
+    <string name="crash_btn_share">Поделиться</string>
+    <string name="crash_btn_restart">Перезапуск</string>
+    <string name="crash_clip_label">Сбой ARCore Toolkit</string>
+    <string name="crash_toast_copied">Лог сбоя скопирован</string>
+    <string name="crash_share_subject">Отчёт о сбое ARCore Toolkit</string>
+    <string name="crash_share_chooser">Поделиться логом сбоя</string>
+    <string name="crash_toast_share_failed">Не удалось поделиться: %1$s</string>
+    <string name="crash_toast_restart_failed">Не удалось перезапустить: %1$s</string>
+
+    <!-- ARCore installer -->
+    <string name="installer_title">Установка ARCore</string>
+    <string name="installer_message">ARCore не установлен или устарел (%1$s).\n\nМожно установить из Google Play или позволить приложению скачать подписанный Google APK ARCore.\n\nURL APK:\n%2$s</string>
+    <string name="installer_btn_download">Скачать APK автоматически</string>
+    <string name="installer_btn_play">Открыть Google Play</string>
+    <string name="installer_btn_change_url">Изменить URL APK…</string>
+    <string name="installer_url_title">URL APK ARCore</string>
+    <string name="installer_url_message">HTTPS-URL универсального APK ARCore. Файл проверяется по сертификату подписи Google.</string>
+    <string name="installer_url_save">Сохранить и скачать</string>
+    <string name="installer_toast_allow_unknown">Разрешите установку неизвестных приложений для ARCore Toolkit и вернитесь.</string>
+    <string name="installer_toast_settings_failed">Не удалось открыть настройки разрешения установки</string>
+    <string name="installer_toast_need_https">Сначала укажите HTTPS-URL APK</string>
+    <string name="installer_progress_downloading">Скачивание APK ARCore…</string>
+    <string name="installer_toast_failed">Ошибка установки ARCore: %1$s</string>
+    <string name="installer_toast_no_play">Google Play недоступен</string>
+
+    <!-- Install result receiver -->
+    <string name="install_toast_open_failed">Не удалось открыть установщик: %1$s</string>
+    <string name="install_toast_success">ARCore установлен</string>
+    <string name="install_toast_failed">Ошибка установки ARCore%1$s</string>
+</resources>

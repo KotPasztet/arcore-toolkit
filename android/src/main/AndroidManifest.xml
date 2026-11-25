@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.nikonektik.arcoretoolkit"
-    android:versionCode="1"
-    android:versionName="0.3.0">
-
-    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="35" />
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -21,12 +17,14 @@
         <package android:name="com.google.ar.core" />
     </queries>
 
-    <application android:label="ARCore Toolkit"
+    <application android:label="@string/app_name"
         android:name=".ToolkitApp"
-        android:debuggable="true"
+        android:theme="@style/Theme.ArCoreToolkit"
         android:extractNativeLibs="true">
         <meta-data android:name="com.google.ar.core" android:value="optional" />
-        <meta-data android:name="com.google.ar.core.min_apk_version" android:value="262640283" />
+        <meta-data android:name="com.google.ar.core.min_apk_version"
+            android:value="262640283"
+            tools:replace="android:value" />
         <activity android:name="com.google.ar.core.InstallActivity" android:exported="false" />
         <activity android:name=".CalibrationActivity" android:exported="false" />
         <activity android:name=".DeviceInfoActivity" android:exported="false" />
@@ -38,7 +36,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Material.NoActionBar" />
+            android:theme="@style/Theme.ArCoreToolkit.Crash" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

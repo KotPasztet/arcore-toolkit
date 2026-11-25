@@ -1,10 +1,9 @@
 package io.github.nikonektik.arcoretoolkit;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -15,8 +14,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.InputType;
-import android.util.Log;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -24,6 +21,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.ar.core.ArCoreApk;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -72,9 +71,7 @@ public final class ArCoreInstaller {
                                          String availability) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         final String currentUrl = apkUrl(activity, defaultUrl);
-        String message = "ARCore is not installed or is outdated (" + availability + ").\n\n"
-                + "You can install it from Google Play, or let this app download a "
-                + "Google-signed ARCore APK.\n\nAPK URL:\n" + currentUrl;
+        String message = activity.getString(R.string.installer_message, availability, currentUrl);
 
         LinearLayout box = new LinearLayout(activity);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -85,25 +82,25 @@ public final class ArCoreInstaller {
         info.setTextSize(14f);
         box.addView(info);
 
-        Button download = new Button(activity);
-        download.setText("Download APK automatically");
+        MaterialButton download = new MaterialButton(activity);
+        download.setText(activity.getString(R.string.installer_btn_download));
         box.addView(download);
 
-        Button play = new Button(activity);
-        play.setText("Open Google Play");
+        MaterialButton play = new MaterialButton(activity);
+        play.setText(activity.getString(R.string.installer_btn_play));
         box.addView(play);
 
-        Button edit = new Button(activity);
-        edit.setText("Change APK URL...");
+        MaterialButton edit = new MaterialButton(activity);
+        edit.setText(activity.getString(R.string.installer_btn_change_url));
         box.addView(edit);
 
         ScrollView scroll = new ScrollView(activity);
         scroll.addView(box);
 
-        final AlertDialog dialog = new AlertDialog.Builder(activity)
-                .setTitle("Install ARCore")
+        final AlertDialog dialog = new MaterialAlertDialogBuilder(activity)
+                .setTitle(activity.getString(R.string.installer_title))
                 .setView(scroll)
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(activity.getString(R.string.common_cancel), null)
                 .create();
         download.setOnClickListener(v -> {
             dialog.dismiss();
@@ -125,17 +122,16 @@ public final class ArCoreInstaller {
         final EditText input = new EditText(activity);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         input.setText(currentUrl);
-        new AlertDialog.Builder(activity)
-                .setTitle("ARCore APK URL")
-                .setMessage("HTTPS URL of a universal ARCore APK. "
-                        + "The file is checked against Google's signing certificate.")
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(activity.getString(R.string.installer_url_title))
+                .setMessage(activity.getString(R.string.installer_url_message))
                 .setView(input)
-                .setPositiveButton("Save & Download", (dialog, which) -> {
+                .setPositiveButton(activity.getString(R.string.installer_url_save), (dialog, which) -> {
                     String url = input.getText().toString().trim();
                     saveApkUrl(activity, url);
                     downloadAndInstall(activity, url);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(activity.getString(R.string.common_cancel), null)
                 .show();
     }
 
@@ -159,7 +155,7 @@ public final class ArCoreInstaller {
                         Uri.parse("https://play.google.com/store/apps/details?id="
                                 + AR_CORE_PACKAGE)));
             } catch (Throwable t2) {
-                Toast.makeText(activity, "Play Store is not available",
+                Toast.makeText(activity, activity.getString(R.string.installer_toast_no_play),
                         Toast.LENGTH_LONG).show();
             }
         }
@@ -185,11 +181,10 @@ public final class ArCoreInstaller {
             activity.startActivity(new Intent(
                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                     Uri.parse("package:" + activity.getPackageName())));
-            Toast.makeText(activity,
-                    "Allow installing unknown apps for ARCore Toolkit, then return here.",
+            Toast.makeText(activity, activity.getString(R.string.installer_toast_allow_unknown),
                     Toast.LENGTH_LONG).show();
         } catch (Throwable t) {
-            Toast.makeText(activity, "Cannot open install permission settings",
+            Toast.makeText(activity, activity.getString(R.string.installer_toast_settings_failed),
                     Toast.LENGTH_LONG).show();
         }
     }
@@ -197,7 +192,8 @@ public final class ArCoreInstaller {
     public static void downloadAndInstall(final Activity activity, final String url) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         if (url == null || !url.startsWith("https://")) {
-            Toast.makeText(activity, "Set an HTTPS APK URL first", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, activity.getString(R.string.installer_toast_need_https),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         if (!canInstallPackages(activity)) {
@@ -207,7 +203,7 @@ public final class ArCoreInstaller {
         }
 
         final ProgressDialog progress = new ProgressDialog(activity);
-        progress.setMessage("Downloading ARCore APK...");
+        progress.setMessage(activity.getString(R.string.installer_progress_downloading));
         progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progress.setIndeterminate(true);
         progress.setCancelable(false);
@@ -240,7 +236,9 @@ public final class ArCoreInstaller {
             activity.runOnUiThread(() -> {
                 try { progress.dismiss(); } catch (Throwable ignored) {}
                 if (error != null) {
-                    Toast.makeText(activity, "ARCore install failed: " + error.getMessage(),
+                    Toast.makeText(activity,
+                            activity.getString(R.string.installer_toast_failed,
+                                    error.getMessage() == null ? String.valueOf(error) : error.getMessage()),
                             Toast.LENGTH_LONG).show();
                 }
             });

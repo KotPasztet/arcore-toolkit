@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+def appVersionCode = (project.findProperty('appVersionCode') ?: 1) as int
+def appVersionName = (project.findProperty('appVersionName') ?: '0.3.0') as String
+
+android {
+    namespace 'io.github.nikonektik.arcoretoolkit'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.nikonektik.arcoretoolkit'
+        minSdk 29
+        targetSdk 35
+        versionCode appVersionCode
+        versionName appVersionName
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+// Match the classic app module output name: app-debug.apk / app-release.apk.
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.each { output ->
+            output.outputFileName.set("app-" + variant.name + ".apk")
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.ar:core:1.57.0'
+    implementation 'org.opencv:opencv:4.9.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

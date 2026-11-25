@@ -1,7 +1,6 @@
 package io.github.nikonektik.arcoretoolkit;
 
 import android.opengl.GLES20;
-import android.util.Log;
 
 public final class ShaderUtil {
     private ShaderUtil() {}

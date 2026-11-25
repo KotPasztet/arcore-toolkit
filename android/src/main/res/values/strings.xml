@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">ARCore Toolkit</string>
+
+    <!-- Common -->
+    <string name="common_close">Close</string>
+    <string name="common_cancel">Cancel</string>
+
+    <!-- Main screen -->
+    <string name="main_btn_profiles">Profiles…</string>
+    <string name="main_btn_device">Device info</string>
+    <string name="main_btn_marker">Marker tracking</string>
+    <string name="main_btn_calibration">Calibration</string>
+    <string name="main_btn_print_tag">Print the tag (PDF)</string>
+    <string name="main_hud_title">ARCore Toolkit</string>
+    <string name="main_hud_profile">Profile: %1$s</string>
+    <string name="main_hud_tap_hint">Tap anywhere to place a cube: on a detected plane when possible, otherwise a temporary camera-relative anchor</string>
+    <string name="main_hud_status">ARCore Toolkit\nProfile: %1$s\nTracking: %2$s\nPlanes: %3$d\nCubes: %4$d\nTap anywhere to place</string>
+    <string name="main_toast_no_plane_anchor">No plane here: using a temporary anchor, the object may drift</string>
+    <string name="main_session_failed_title">ARCore session failed</string>
+
+    <!-- Profile server -->
+    <string name="main_server_title">Profile server</string>
+    <string name="main_server_message">Base URL of the switch server (see tools/server). A profile URL looks like &lt;base&gt;&lt;name&gt;/&lt;version&gt;.zip</string>
+    <string name="main_server_hint">https://host:9443/arcore/switch/</string>
+    <string name="main_server_save">Save</string>
+    <string name="main_toast_server_saved">Server saved</string>
+    <string name="main_toast_set_server_first">Set the profile server first</string>
+    <string name="main_profiles_unconfigured_title">Profile server not set</string>
+    <string name="main_profiles_unconfigured_message">Profiles are downloaded from a switch server and tuned for a specific camera. Set the server URL first, or try the built-in default server.</string>
+    <string name="main_profiles_unconfigured_set">Set server URL…</string>
+    <string name="main_profiles_unconfigured_default">Use default server</string>
+    <string name="main_toast_loading_profiles">Loading profiles…</string>
+    <string name="main_profiles_error_message">Cannot load the profile list:\n%1$s</string>
+    <string name="main_profiles_empty_message">The server returned no profiles.</string>
+    <string name="main_profiles_server_url">Server URL…</string>
+    <string name="main_profiles_title">Profiles</string>
+    <string name="main_profiles_info">Server: %1$s\nDevice: %2$s  key: %3$s</string>
+    <string name="main_profiles_info_camera">Camera: fx %1$.1f, fy %2$.1f</string>
+    <string name="main_profiles_auto">Auto: match this camera</string>
+    <string name="main_profiles_advanced">Advanced tuning…</string>
+    <string name="main_profiles_nearest_suffix">  ★</string>
+    <string name="profiles_entry_format">%1$s  (fx %2$.1f)</string>
+
+    <!-- Applying profiles -->
+    <string name="main_toast_applying">Downloading profile “%1$s”… ARCore will restart the camera when it is ready</string>
+    <string name="main_toast_switch_failed">Switch failed: %1$s</string>
+    <string name="main_recovery_title">Profile rejected by ARCore</string>
+    <string name="main_recovery_message">ARCore created the session but could not start the camera with this profile. It probably belongs to a phone with a different camera configuration.</string>
+    <string name="main_recovery_reapply">Re-apply %1$s</string>
+    <string name="main_recovery_default_label">last working profile</string>
+    <string name="main_toast_camera_unavailable">Camera characteristics unavailable</string>
+    <string name="main_toast_no_usable_profiles">The server returned no usable profiles</string>
+    <string name="main_toast_closest">Closest: %1$s (fx %2$.1f) → %3$.1f</string>
+    <string name="main_toast_no_profiles">No profiles loaded</string>
+
+    <!-- ARCore availability -->
+    <string name="main_unavailable_title">ARCore is not available</string>
+    <string name="main_unavailable_message">ARCore reports: %1$s\n\nYou can try installing/updating Google Play Services for AR.</string>
+    <string name="main_unavailable_install">Install ARCore…</string>
+    <string name="main_unavailable_hint">ARCore reports: %1$s\n\nInstall/update Google Play Services for AR and a device profile, then reopen this screen. See docs/04-profiles.md.</string>
+
+    <!-- Advanced tuning dialog -->
+    <string name="tune_title">ARCore profile tuning</string>
+    <string name="tune_intro">Leave a field empty to keep the value of the base profile. After “Apply”, the profile is rebuilt on the server and ARCore restarts.</string>
+    <string name="tune_base_profile">Base profile (donor):</string>
+    <string name="tune_section_camera">Camera (640×480)</string>
+    <string name="tune_section_sync">Camera–IMU sync</string>
+    <string name="tune_section_lever">Camera-to-IMU lever arm (metres)</string>
+    <string name="tune_section_rotation">Camera-to-IMU rotation (quaternion w, x, y, z)</string>
+    <string name="tune_section_imu">IMU</string>
+    <string name="tune_section_depth">Depth and planes</string>
+    <string name="tune_apply">Apply</string>
+    <string name="tune_preset_zero_tsa">Preset: zero time offset (tsa=0)</string>
+    <string name="tune_hint_fx">Focal length along X in pixels for a 640×480 frame. Affects scale and depth.</string>
+    <string name="tune_hint_fy">Focal length along Y in pixels. Usually equal to focal x.</string>
+    <string name="tune_hint_cx">Principal point X. The nominal value is 320; calibration gave 302–310. Try 302 if planes drift sideways.</string>
+    <string name="tune_hint_cy">Principal point Y. The nominal value is 240.</string>
+    <string name="tune_hint_k0">Radial distortion k0. Usually close to zero.</string>
+    <string name="tune_hint_k1">Distortion k1. Usually 0; large values break tracking.</string>
+    <string name="tune_hint_k2">Distortion k2. Usually 0.</string>
+    <string name="tune_hint_rs">Actual frame readout time from the sensor metadata — 26 763 333 ns (26.76 ms). A wrong value severely breaks depth during motion.</string>
+    <string name="tune_hint_tsa">Offset of the camera timestamp relative to the IMU. Negative means the camera is considered “earlier”. Tune using DESYNC logs.</string>
+    <string name="tune_hint_tb">1 — RUNTIME_CHECK_REQUIRED, 2 — TRUSTED_AS_BOOTTIME. Value 2 is usually the right choice.</string>
+    <string name="tune_hint_rss">1 — from the profile, 2 — IMAGE_METADATA. Try 2 if the camera reports readout timestamps.</string>
+    <string name="tune_hint_px">IMU offset along X in the camera frame. 0 is the safe choice when the real lever arm is unknown.</string>
+    <string name="tune_hint_py">IMU offset along Y. Usually 0–0.06.</string>
+    <string name="tune_hint_pz">IMU offset along Z (along the optical axis). Physically no more than ±0.01; larger values are impossible.</string>
+    <string name="tune_hint_qw">W component of the quaternion. ≈ 0.0015 for this mount.</string>
+    <string name="tune_hint_qx">X component. ≈ −0.706 for this mount.</string>
+    <string name="tune_hint_qy">Y component. ≈ 0.708 for this mount.</string>
+    <string name="tune_hint_qz">Z component. ≈ −0.001 for this mount.</string>
+    <string name="tune_hint_gsx">Gyroscope scale along X. ARCore estimates ≈1.03 online.</string>
+    <string name="tune_hint_gsy">Gyroscope scale along Y. ARCore estimates ≈1.015.</string>
+    <string name="tune_hint_gsz">Gyroscope scale along Z. ARCore estimates ≈1.002.</string>
+    <string name="tune_hint_asx">Accelerometer scale along X. The normal value is ≈ 1.0.</string>
+    <string name="tune_hint_asy">Accelerometer scale along Y. The normal value is ≈ 1.0.</string>
+    <string name="tune_hint_asz">Accelerometer scale along Z. The normal value is ≈ 1.0.</string>
+    <string name="tune_hint_gn">Gyroscope noise. Less means more trust in the IMU, more means more trust in the camera. Generic value 0.0005309.</string>
+    <string name="tune_hint_an">Accelerometer noise. Generic value 0.0048836.</string>
+    <string name="tune_hint_gbx">Initial gyroscope bias along X, rad/s. Measured while stationary.</string>
+    <string name="tune_hint_gby">Initial gyroscope bias along Y, rad/s.</string>
+    <string name="tune_hint_gbz">Initial gyroscope bias along Z, rad/s.</string>
+    <string name="tune_hint_depth">Depth API: 1 — disabled, 2 — enabled. Planes use ML depth.</string>
+
+    <!-- Calibration -->
+    <string name="calib_instructions">Kalibr calibration\n1. The AprilGrid 6×6 is already printed (tagSize ≈ 24.75 mm).\n2. Get close: the target should fill MORE THAN HALF of the frame.\n3. Start → keep still for the first 5 s.\n4. For 60–90 s move smoothly around the target:\n   back/forth, left/right, up/down, tilts.\n5. Stop.</string>
+    <string name="calib_status_ready">Ready to record.</string>
+    <string name="calib_details">Detailed instructions</string>
+    <string name="calib_start">Start</string>
+    <string name="calib_stop">Stop</string>
+    <string name="calib_details_title">How to calibrate</string>
+    <string name="calib_details_ok">Got it</string>
+    <string name="calib_details_text">1. The AprilGrid 6×6 is already printed:\n   tagCols=6, tagRows=6, tagSize≈0.02475 m, tagSpacing=0.3.\n2. Glue it to a rigid flat backing and put it on a table.\n3. Use bright light: the brighter it is, the shorter the exposure and the less motion blur.\n4. Get so close that the target fills MORE THAN HALF of the frame\n   (about 25–40 cm from the phone). Do not step back!\n5. Tap “Start”. Keep the phone still for the first 5 seconds.\n6. Then for 60–90 seconds move the phone smoothly around the target:\n   back/forth, left/right, up/down, tilts (pitch/yaw/roll).\n7. Keep the target in the frame; move slowly, without blur or jerks.\n8. Tap “Stop”. The data is saved in the app storage.\n\nRecording is grayscale 1280×960, ~20 frames/s, IMU ~400 Hz.\n\nExport (from a debug build):\nadb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib &gt; calib.tar\n\nThen on your computer: unpack, build a ROS bag and run Kalibr.</string>
+    <string name="calib_status_recording">Recording: %1$d s\nFrames: %2$d   IMU: %3$d\nFolder: %4$s</string>
+    <string name="calib_status_done">Done. Frames: %1$d, IMU: %2$d\nFolder: %3$s</string>
+    <string name="calib_toast_no_back_camera">No back camera found</string>
+    <string name="calib_toast_camera_unavailable">Camera unavailable: %1$s</string>
+    <string name="calib_toast_session_failed">Could not configure the camera</string>
+    <string name="calib_toast_camera_not_ready">Camera is not ready yet</string>
+    <string name="calib_toast_folder_failed">Could not create the session folder</string>
+    <string name="calib_toast_recording_started">Recording started</string>
+    <string name="calib_toast_start_error">Start error: %1$s</string>
+    <string name="calib_toast_recording_stopped">Recording stopped</string>
+
+    <!-- Marker AR -->
+    <string name="marker_unavailable">Marker AR is unavailable on this device:\n\nOpenCV native library could not be loaded.\n%1$s</string>
+    <string name="marker_overlay_no_marker">No marker</string>
+    <string name="marker_overlay_pose">ID %1$d  dist %2$.2f m  err %3$.2f px</string>
+    <string name="marker_overlay_stats">frames %1$d  detected %2$d</string>
+    <string name="marker_toast_camera_service">Camera service unavailable</string>
+    <string name="marker_toast_no_back_camera">No back camera found</string>
+    <string name="marker_toast_camera_error">Camera error %1$d</string>
+    <string name="marker_toast_camera_unavailable">Camera unavailable: %1$s</string>
+    <string name="marker_toast_session_failed">Camera stream could not be configured</string>
+    <string name="marker_btn_print_tag">Print tag (A4 PDF)</string>
+    <string name="marker_tag_size_hint">Tag size, mm (default 150)</string>
+    <string name="marker_tag_size_applied">Tag size for distance math: %1$d mm</string>
+    <string name="marker_print_title">Print AprilTag (A4 PDF)</string>
+    <string name="marker_print_explainer">Creates a printable A4 PDF: AprilTag 36h11, ID 0, a 100 mm scale bar and print instructions. The outer black square is printed exactly at the size you enter.</string>
+    <string name="marker_print_hint">Tag size, mm (40–300, default 150)</string>
+    <string name="marker_print_create">Create PDF</string>
+    <string name="marker_print_toast_working">Generating PDF…</string>
+    <string name="marker_print_toast_saved">Saved to Downloads: %1$s</string>
+    <string name="marker_print_share_chooser">Share the tag PDF</string>
+    <string name="marker_print_toast_invalid">Enter a tag size between 40 and 300 mm</string>
+    <string name="marker_print_too_large">%1$d mm does not fit on A4 together with the quiet zone — max 160 mm</string>
+    <string name="marker_print_toast_failed">Could not save the PDF: %1$s</string>
+
+    <!-- Tag PDF sheet -->
+    <string name="tagpdf_caption">AprilTag 36h11 · ID 0 · tag size %1$d mm</string>
+    <string name="tagpdf_instructions_1">Print at 100% / Actual size on A4. Matte paper, glue to a rigid backing.</string>
+    <string name="tagpdf_instructions_2">Measure the scale bar: if it is not 100 mm, scale your tag size accordingly.</string>
+    <string name="tagpdf_scale_bar">100 mm</string>
+
+    <!-- Device info -->
+    <string name="device_title">Device info / intrinsics</string>
+    <string name="device_copy">Copy as text</string>
+    <string name="device_section_camera">== camera ==</string>
+    <string name="device_section_sensors">== sensors ==</string>
+    <string name="device_no_back_camera">no back camera found</string>
+    <string name="device_toast_copied">Copied</string>
+    <string name="device_toast_copy_failed">Copy failed: %1$s</string>
+
+    <!-- Crash screen -->
+    <string name="crash_title">ARCore Toolkit crashed</string>
+    <string name="crash_saved_log">Saved log: %1$s</string>
+    <string name="crash_no_report">No crash report was written.\n\nExpected file:\n%1$s</string>
+    <string name="crash_btn_copy">Copy</string>
+    <string name="crash_btn_share">Share</string>
+    <string name="crash_btn_restart">Restart</string>
+    <string name="crash_clip_label">ARCore Toolkit crash</string>
+    <string name="crash_toast_copied">Crash log copied</string>
+    <string name="crash_share_subject">ARCore Toolkit crash report</string>
+    <string name="crash_share_chooser">Share crash log</string>
+    <string name="crash_toast_share_failed">Cannot share: %1$s</string>
+    <string name="crash_toast_restart_failed">Cannot restart: %1$s</string>
+
+    <!-- ARCore installer -->
+    <string name="installer_title">Install ARCore</string>
+    <string name="installer_message">ARCore is not installed or is outdated (%1$s).\n\nYou can install it from Google Play, or let this app download a Google-signed ARCore APK.\n\nAPK URL:\n%2$s</string>
+    <string name="installer_btn_download">Download APK automatically</string>
+    <string name="installer_btn_play">Open Google Play</string>
+    <string name="installer_btn_change_url">Change APK URL…</string>
+    <string name="installer_url_title">ARCore APK URL</string>
+    <string name="installer_url_message">HTTPS URL of a universal ARCore APK. The file is checked against Google’s signing certificate.</string>
+    <string name="installer_url_save">Save &amp; Download</string>
+    <string name="installer_toast_allow_unknown">Allow installing unknown apps for ARCore Toolkit, then return here.</string>
+    <string name="installer_toast_settings_failed">Cannot open install permission settings</string>
+    <string name="installer_toast_need_https">Set an HTTPS APK URL first</string>
+    <string name="installer_progress_downloading">Downloading ARCore APK…</string>
+    <string name="installer_toast_failed">ARCore install failed: %1$s</string>
+    <string name="installer_toast_no_play">Play Store is not available</string>
+
+    <!-- Install result receiver -->
+    <string name="install_toast_open_failed">Cannot open the installer: %1$s</string>
+    <string name="install_toast_success">ARCore installed</string>
+    <string name="install_toast_failed">ARCore install failed%1$s</string>
+</resources>

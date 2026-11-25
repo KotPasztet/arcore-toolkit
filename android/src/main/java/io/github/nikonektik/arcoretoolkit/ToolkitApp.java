@@ -2,6 +2,8 @@ package io.github.nikonektik.arcoretoolkit;
 
 import android.app.Application;
 
+import com.google.android.material.color.DynamicColors;
+
 public class ToolkitApp extends Application {
     @Override
     public void onCreate() {
@@ -12,6 +14,8 @@ public class ToolkitApp extends Application {
             // that could try to open the crash screen recursively.
             return;
         }
+        // Material You dynamic color on Android 12+.
+        DynamicColors.applyToActivitiesIfAvailable(this);
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(this));
     }
 }

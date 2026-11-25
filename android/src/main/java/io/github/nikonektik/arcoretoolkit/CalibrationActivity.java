@@ -2,7 +2,6 @@ package io.github.nikonektik.arcoretoolkit;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
@@ -25,19 +24,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.SystemClock;
-import android.util.Log;
 import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowInsets;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -61,7 +61,7 @@ import java.util.Locale;
  *   imu.csv      (timestamp_ns,type,x,y,z)   type=gyro|accel
  *   meta.txt     (camera characteristics + session info)
  *
- * Export (app is debuggable):
+ * Export (from a debug build):
  *   adb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib > calib.tar
  */
 public class CalibrationActivity extends Activity
@@ -72,7 +72,7 @@ public class CalibrationActivity extends Activity
     private TextureView preview;
     private TextView instructions;
     private TextView status;
-    private Button startStop;
+    private MaterialButton startStop;
 
     private CameraManager cameraManager;
     private CameraDevice cameraDevice;
@@ -116,9 +116,8 @@ public class CalibrationActivity extends Activity
         public void run() {
             if (!recording) return;
             long elapsed = (SystemClock.elapsedRealtimeNanos() - recordStartNs) / 1_000_000_000L;
-            status.setText("Запись: " + elapsed + " с\n"
-                    + "Кадров: " + frameIndex + "   IMU: " + imuSamples + "\n"
-                    + "Папка: " + (sessionDir != null ? sessionDir.getAbsolutePath() : "-"));
+            status.setText(getString(R.string.calib_status_recording, elapsed, frameIndex,
+                    imuSamples, sessionDir != null ? sessionDir.getAbsolutePath() : "-"));
             mainHandler.postDelayed(this, 500);
         }
     };
@@ -148,13 +147,7 @@ public class CalibrationActivity extends Activity
         });
 
         instructions = new TextView(this);
-        instructions.setText("Калибровка Kalibr\n"
-                + "1. AprilGrid 6×6 уже напечатан (tagSize≈24.75 мм).\n"
-                + "2. Подойди близко: мишень должна занимать БОЛЬШЕ ПОЛОВИНЫ кадра.\n"
-                + "3. Старт → первые 5 с держи неподвижно.\n"
-                + "4. 60–90 с плавно води вокруг мишени:\n"
-                + "   вперёд/назад, влево/вправо, вверх/вниз, наклоны.\n"
-                + "5. Стоп.");
+        instructions.setText(getString(R.string.calib_instructions));
         instructions.setTextColor(0xFFFFFFFF);
         instructions.setTextSize(13f);
         instructions.setPadding(32, 24, 32, 8);
@@ -168,14 +161,14 @@ public class CalibrationActivity extends Activity
         root.addView(previewHolder, new LinearLayout.LayoutParams(-1, screenW * 3 / 4));
 
         status = new TextView(this);
-        status.setText("Готов к записи.");
+        status.setText(getString(R.string.calib_status_ready));
         status.setTextColor(0xFFFFFF00);
         status.setTextSize(14f);
         status.setPadding(32, 16, 32, 16);
         root.addView(status, new LinearLayout.LayoutParams(-1, -2));
 
-        Button details = new Button(this);
-        details.setText("Подробная инструкция");
+        MaterialButton details = new MaterialButton(this);
+        details.setText(getString(R.string.calib_details));
         details.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -184,8 +177,8 @@ public class CalibrationActivity extends Activity
         });
         root.addView(details, new LinearLayout.LayoutParams(-1, -2));
 
-        startStop = new Button(this);
-        startStop.setText("Старт");
+        startStop = new MaterialButton(this);
+        startStop.setText(getString(R.string.calib_start));
         startStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -217,32 +210,16 @@ public class CalibrationActivity extends Activity
     }
 
     private void showDetails() {
-        String text = "Калибровка Kalibr\n\n"
-                + "1. AprilGrid 6×6 уже напечатан:\n"
-                + "   tagCols=6, tagRows=6, tagSize≈0.02475 м, tagSpacing=0.3.\n"
-                + "2. Наклей на жёсткую ровную основу, положи на стол.\n"
-                + "3. Включи яркий свет: чем светлее, тем короче выдержка и меньше смаз.\n"
-                + "4. Подойди так, чтобы мишень занимала БОЛЬШЕ ПОЛОВИНЫ кадра\n"
-                + "   (примерно 25–40 см от телефона). Не отходи далеко!\n"
-                + "5. Нажми «Старт». Первые 5 секунд держи телефон неподвижно.\n"
-                + "6. Затем 60–90 секунд плавно води телефоном вокруг мишени:\n"
-                + "   вперёд/назад, влево/вправо, вверх/вниз, наклоны (pitch/yaw/roll).\n"
-                + "7. Держи мишень в кадре, двигайся медленно, без смаза и рывков.\n"
-                + "8. Нажми «Стоп». Данные сохранятся в память приложения.\n\n"
-                + "Запись идёт в ч/б 1280×960, ~20 кадров/с, IMU ~400 Гц.\n\n"
-                + "Экспорт (приложение debuggable):\n"
-                + "adb exec-out run-as io.github.nikonektik.arcoretoolkit tar -c files/calib > calib.tar\n\n"
-                + "Дальше на сервере: распаковать, собрать ROS bag и прогнать Kalibr.";
         ScrollView scroll = new ScrollView(this);
         TextView tv = new TextView(this);
-        tv.setText(text);
+        tv.setText(getString(R.string.calib_details_text));
         tv.setTextSize(14f);
         tv.setPadding(48, 24, 48, 24);
         scroll.addView(tv);
-        new AlertDialog.Builder(this)
-                .setTitle("Как калибровать")
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.calib_details_title))
                 .setView(scroll)
-                .setPositiveButton("Понятно", null)
+                .setPositiveButton(getString(R.string.calib_details_ok), null)
                 .show();
     }
 
@@ -332,7 +309,8 @@ public class CalibrationActivity extends Activity
         }
         ToolkitLog.i(TAG, "camera=" + cameraId + " frame=" + frameSize + " orientation=" + sensorOrientation);
         if (!cameraFound) {
-            Toast.makeText(this, "Задняя камера не найдена", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.calib_toast_no_back_camera),
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -374,7 +352,8 @@ public class CalibrationActivity extends Activity
     private void openCamera() {
         if (cameraDevice != null || opening) return;
         if (!cameraFound) {
-            Toast.makeText(this, "Задняя камера не найдена", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.calib_toast_no_back_camera),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         opening = true;
@@ -422,7 +401,8 @@ public class CalibrationActivity extends Activity
         } catch (Throwable t) {
             opening = false;
             ToolkitLog.e(TAG, "openCamera failed", t);
-            Toast.makeText(this, "Камера недоступна: " + t, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.calib_toast_camera_unavailable, t),
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -472,7 +452,8 @@ public class CalibrationActivity extends Activity
                         @Override
                         public void run() {
                             Toast.makeText(CalibrationActivity.this,
-                                    "Не удалось настроить камеру", Toast.LENGTH_LONG).show();
+                                    getString(R.string.calib_toast_session_failed),
+                                    Toast.LENGTH_LONG).show();
                         }
                     });
                 }
@@ -536,7 +517,8 @@ public class CalibrationActivity extends Activity
     private void startRecording() {
         if (recording) return;
         if (preview.getSurfaceTexture() == null || cameraDevice == null) {
-            Toast.makeText(this, "Камера ещё не готова", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.calib_toast_camera_not_ready),
+                    Toast.LENGTH_SHORT).show();
             return;
         }
         try {
@@ -544,7 +526,8 @@ public class CalibrationActivity extends Activity
             sessionDir = new File(getFilesDir(), "calib/" + stamp);
             framesDir = new File(sessionDir, "frames");
             if (!framesDir.mkdirs()) {
-                Toast.makeText(this, "Не удалось создать папку", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.calib_toast_folder_failed),
+                        Toast.LENGTH_LONG).show();
                 return;
             }
             framesWriter = new BufferedWriter(new FileWriter(new File(sessionDir, "frames.csv")));
@@ -556,21 +539,23 @@ public class CalibrationActivity extends Activity
             writeMeta(sessionDir);
             recording = true;
             recordStartNs = SystemClock.elapsedRealtimeNanos();
-            startStop.setText("Стоп");
+            startStop.setText(getString(R.string.calib_stop));
             if (gyro != null) sensorManager.registerListener(this, gyro, SensorManager.SENSOR_DELAY_FASTEST);
             if (accel != null) sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_FASTEST);
             mainHandler.post(statusTick);
-            Toast.makeText(this, "Запись начата", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.calib_toast_recording_started),
+                    Toast.LENGTH_SHORT).show();
         } catch (Throwable t) {
             ToolkitLog.e(TAG, "startRecording failed", t);
-            Toast.makeText(this, "Ошибка старта: " + t, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.calib_toast_start_error, t),
+                    Toast.LENGTH_LONG).show();
             stopRecording();
         }
     }
 
     private void stopRecording() {
         recording = false;
-        startStop.setText("Старт");
+        startStop.setText(getString(R.string.calib_start));
         mainHandler.removeCallbacks(statusTick);
         sensorManager.unregisterListener(this);
         try {
@@ -580,9 +565,10 @@ public class CalibrationActivity extends Activity
         } catch (Throwable ignored) {}
         imuWriter = null;
         framesWriter = null;
-        status.setText("Готово. Кадров: " + frameIndex + ", IMU: " + imuSamples
-                + "\nПапка: " + (sessionDir != null ? sessionDir.getAbsolutePath() : "-"));
-        Toast.makeText(this, "Запись остановлена", Toast.LENGTH_SHORT).show();
+        status.setText(getString(R.string.calib_status_done, frameIndex, imuSamples,
+                sessionDir != null ? sessionDir.getAbsolutePath() : "-"));
+        Toast.makeText(this, getString(R.string.calib_toast_recording_stopped),
+                Toast.LENGTH_SHORT).show();
     }
 
     private void writeMeta(File dir) {

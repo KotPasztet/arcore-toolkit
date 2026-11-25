@@ -2,8 +2,6 @@ package io.github.nikonektik.arcoretoolkit;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -17,14 +15,12 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Base64;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -32,6 +28,10 @@ import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
@@ -63,7 +63,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class MainActivity extends Activity implements GLSurfaceView.Renderer {
-    private static final String TAG = "ARCOREGAME";
+    private static final String TAG = "ArCoreToolkit";
 
     private GLSurfaceView surfaceView;
     private Session session;
@@ -95,13 +95,30 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private boolean recoveryShown;
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private MaterialButton newButton(String text, View.OnClickListener listener) {
+        MaterialButton button = new MaterialButton(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setOnClickListener(listener);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        int margin = dp(4);
+        lp.setMargins(margin, margin, margin, margin);
+        button.setLayoutParams(lp);
+        return button;
+    }
+
     private void showError(String title, String message) {
         if (isFinishing() || isDestroyed()) return;
         try {
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                     .setTitle(title)
                     .setMessage(message)
-                    .setPositiveButton("Close", null)
+                    .setPositiveButton(getString(R.string.common_close), null)
                     .show();
         } catch (Throwable ignored) {
         }
@@ -137,11 +154,12 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         root.addView(surfaceView, new FrameLayout.LayoutParams(-1, -1));
 
         hud = new TextView(this);
-        hud.setText("ARCore Toolkit\nProfile: " + currentProfileLabel()
-                + "\nTap a green plane to place a cube");
+        hud.setText(getString(R.string.main_hud_title) + "\n"
+                + getString(R.string.main_hud_profile, currentProfileLabel()) + "\n"
+                + getString(R.string.main_hud_tap_hint));
         hud.setTextColor(Color.WHITE);
         hud.setTextSize(16f);
-        int hudTop = 64;
+        int hudTop = dp(32);
         try {
             int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
             if (id > 0) hudTop += getResources().getDimensionPixelSize(id);
@@ -151,43 +169,33 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                         tv.data, getResources().getDisplayMetrics());
             }
         } catch (Throwable ignored) {}
-        hud.setPadding(32, hudTop, 32, 32);
+        hud.setPadding(dp(16), hudTop, dp(16), dp(16));
         hud.setShadowLayer(4f, 2f, 2f, Color.BLACK);
         hud.setClickable(false);
         hud.setFocusable(false);
         root.addView(hud, new FrameLayout.LayoutParams(-1, -2));
 
+        // Bottom card with the navigation buttons.
+        MaterialCardView card = new MaterialCardView(this);
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.VERTICAL);
-        controls.setPadding(32, 16, 32, 48);
-        controls.setBackgroundColor(0xAA000000);
+        controls.setPadding(dp(8), dp(4), dp(8), dp(8));
+        card.addView(controls, new FrameLayout.LayoutParams(-1, -2));
 
-        Button profiles = new Button(this);
-        profiles.setText("Profiles...");
-        profiles.setOnClickListener(v -> showProfilesDialog());
-
-        Button device = new Button(this);
-        device.setText("Device info / intrinsics");
-        device.setOnClickListener(v ->
-                startActivity(new Intent(MainActivity.this, DeviceInfoActivity.class)));
-
-        Button marker = new Button(this);
-        marker.setText("Marker AR");
-        marker.setOnClickListener(v ->
-                startActivity(new Intent(MainActivity.this, MarkerActivity.class)));
-
-        Button calib = new Button(this);
-        calib.setText("Calibration (Kalibr)");
-        calib.setOnClickListener(v ->
-                startActivity(new Intent(MainActivity.this, CalibrationActivity.class)));
-
-        controls.addView(profiles);
-        controls.addView(device);
-        controls.addView(marker);
-        controls.addView(calib);
-        FrameLayout.LayoutParams controlsLp = new FrameLayout.LayoutParams(-1, -2);
-        controlsLp.gravity = Gravity.BOTTOM;
-        root.addView(controls, controlsLp);
+        controls.addView(newButton(getString(R.string.main_btn_profiles),
+                v -> showProfilesDialog()));
+        controls.addView(newButton(getString(R.string.main_btn_device), v ->
+                startActivity(new Intent(MainActivity.this, DeviceInfoActivity.class))));
+        controls.addView(newButton(getString(R.string.main_btn_marker), v ->
+                startActivity(new Intent(MainActivity.this, MarkerActivity.class))));
+        controls.addView(newButton(getString(R.string.main_btn_calibration), v ->
+                startActivity(new Intent(MainActivity.this, CalibrationActivity.class))));
+        controls.addView(newButton(getString(R.string.main_btn_print_tag), v ->
+                TagPdfExporter.showPrintDialog(this)));
+        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(-1, -2);
+        cardLp.gravity = Gravity.BOTTOM;
+        cardLp.setMargins(dp(8), 0, dp(8), dp(8));
+        root.addView(card, cardLp);
 
         setContentView(root);
 
@@ -261,7 +269,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         anchors.add(a);
         placed++;
         if ("INSTANT".equals(kind)) {
-            Toast.makeText(this, "Нет плоскости: якорь временный, объект может смещаться", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.main_toast_no_plane_anchor),
+                    Toast.LENGTH_SHORT).show();
         }
         ToolkitLog.i(TAG, "PLACED_" + kind + " total=" + placed + " pose="
                 + hit.getHitPose().tx() + "," + hit.getHitPose().ty() + "," + hit.getHitPose().tz());
@@ -272,11 +281,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                hud.setText("ARCore Toolkit\nProfile: " + currentProfileLabel()
-                        + "\nTracking: " + lastTracking
-                        + "\nPlanes: " + lastPlanes
-                        + "\nCubes: " + placed
-                        + "\nTap to place");
+                hud.setText(getString(R.string.main_hud_status, currentProfileLabel(),
+                        lastTracking, lastPlanes, placed));
             }
         });
     }
@@ -287,6 +293,13 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         if (!pending.isEmpty()) return pending + " (applying)";
         String label = prefs.getString(PREF_LABEL, "");
         return label.isEmpty() ? "-" : label;
+    }
+
+    /** True when the user configured a server explicitly (raw pref, no default fallback). */
+    private boolean serverConfigured() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String base = prefs.getString(PREF_SERVER, "");
+        return base != null && !base.trim().isEmpty();
     }
 
     private String serverBase() {
@@ -315,19 +328,19 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
 
     private void editServer() {
         final EditText input = new EditText(this);
-        input.setHint("https://host:9443/arcore/switch/");
+        input.setHint(getString(R.string.main_server_hint));
         input.setText(serverBase());
-        new AlertDialog.Builder(this)
-                .setTitle("Profile server")
-                .setMessage("Base URL of the switch server (see tools/server). "
-                        + "A profile URL looks like <base><name>/<version>.zip")
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.main_server_title))
+                .setMessage(getString(R.string.main_server_message))
                 .setView(input)
-                .setPositiveButton("Save", (d, w) -> {
+                .setPositiveButton(getString(R.string.main_server_save), (d, w) -> {
                     getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                             .putString(PREF_SERVER, input.getText().toString().trim()).apply();
-                    Toast.makeText(this, "Server saved", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.main_toast_server_saved),
+                            Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.common_cancel), null)
                 .show();
     }
 
@@ -362,7 +375,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private void applySpec(String spec, String label) {
         String url = urlFor(spec);
         if (url == null) {
-            Toast.makeText(this, "Set the profile server first", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.main_toast_set_server_first),
+                    Toast.LENGTH_LONG).show();
             editServer();
             return;
         }
@@ -372,7 +386,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 .apply();
         recoveryShown = false;
         ToolkitLog.i(TAG, "APPLY " + label + " -> " + url);
-        Toast.makeText(this, "Applying " + label + "...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.main_toast_applying, label),
+                Toast.LENGTH_LONG).show();
         try {
             Intent intent = new Intent();
             intent.setClassName("com.google.ar.core",
@@ -382,7 +397,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             startActivity(intent);
         } catch (Throwable t) {
             ToolkitLog.e(TAG, "switch failed", t);
-            Toast.makeText(this, "Switch failed: " + t, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.main_toast_switch_failed, t),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         ui.postDelayed(() -> {
@@ -416,15 +432,16 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         recoveryShown = true;
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         final String spec = prefs.getString(PREF_LAST_GOOD_SPEC, "");
-        final String label = prefs.getString(PREF_LAST_GOOD_LABEL, "last working profile");
-        AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                .setTitle("Profile rejected by ARCore")
-                .setMessage("ARCore created the session but could not start the camera with this profile. "
-                        + "It probably belongs to a phone with a different camera configuration.")
-                .setNeutralButton("Profiles...", (d, w) -> showProfilesDialog())
-                .setNegativeButton("Close", null);
+        final String label = prefs.getString(PREF_LAST_GOOD_LABEL,
+                getString(R.string.main_recovery_default_label));
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.main_recovery_title))
+                .setMessage(getString(R.string.main_recovery_message))
+                .setNeutralButton(getString(R.string.main_btn_profiles), (d, w) -> showProfilesDialog())
+                .setNegativeButton(getString(R.string.common_close), null);
         if (!spec.isEmpty()) {
-            builder.setPositiveButton("Re-apply " + label, (d, w) -> applySpec(spec, label));
+            builder.setPositiveButton(getString(R.string.main_recovery_reapply, label),
+                    (d, w) -> applySpec(spec, label));
         }
         builder.show();
     }
@@ -435,11 +452,6 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         double fy;
         double cx;
         double cy;
-
-        @Override
-        public String toString() {
-            return String.format(Locale.US, "%s  (fx %.1f)", name, fx);
-        }
     }
 
     private static String profileKey(String device) {
@@ -500,28 +512,42 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     }
 
     private void showProfilesDialog() {
-        if (serverBase().isEmpty()) {
-            editServer();
+        if (!serverConfigured()) {
+            // Explain the flow before the user tries a profile without a server.
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.main_profiles_unconfigured_title))
+                    .setMessage(getString(R.string.main_profiles_unconfigured_message))
+                    .setPositiveButton(getString(R.string.main_profiles_unconfigured_set),
+                            (d, w) -> editServer())
+                    .setNeutralButton(getString(R.string.main_profiles_unconfigured_default),
+                            (d, w) -> loadProfiles())
+                    .setNegativeButton(getString(R.string.common_cancel), null)
+                    .show();
             return;
         }
-        Toast.makeText(this, "Loading profiles...", Toast.LENGTH_SHORT).show();
+        loadProfiles();
+    }
+
+    private void loadProfiles() {
+        Toast.makeText(this, getString(R.string.main_toast_loading_profiles),
+                Toast.LENGTH_SHORT).show();
         fetchCatalog((catalog, error) -> {
             if (isFinishing() || isDestroyed()) return;
             if (error != null) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Profile server")
-                        .setMessage("Cannot load the profile list:\n" + error)
-                        .setPositiveButton("Server URL...", (d, w) -> editServer())
-                        .setNegativeButton("Close", null)
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(getString(R.string.main_server_title))
+                        .setMessage(getString(R.string.main_profiles_error_message, error))
+                        .setPositiveButton(getString(R.string.main_profiles_server_url), (d, w) -> editServer())
+                        .setNegativeButton(getString(R.string.common_close), null)
                         .show();
                 return;
             }
             if (catalog == null || catalog.isEmpty()) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Profile server")
-                        .setMessage("The server returned no profiles.")
-                        .setPositiveButton("Server URL...", (d, w) -> editServer())
-                        .setNegativeButton("Close", null)
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(getString(R.string.main_server_title))
+                        .setMessage(getString(R.string.main_profiles_empty_message))
+                        .setPositiveButton(getString(R.string.main_profiles_server_url), (d, w) -> editServer())
+                        .setNegativeButton(getString(R.string.common_close), null)
                         .show();
                 return;
             }
@@ -536,49 +562,42 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 24, 48, 24);
+        box.setPadding(dp(24), dp(12), dp(24), dp(12));
 
         TextView info = new TextView(this);
-        String text = "Server: " + serverBase() + "\n"
-                + "Device: " + android.os.Build.DEVICE
-                + "  key: " + profileKey(android.os.Build.DEVICE);
+        String text = getString(R.string.main_profiles_info, serverBase(),
+                android.os.Build.DEVICE, profileKey(android.os.Build.DEVICE));
         if (camera != null && camera.valid()) {
-            text += String.format(Locale.US, "\nCamera: fx %.1f, fy %.1f", camera.fx(), camera.fy());
+            text += "\n" + getString(R.string.main_profiles_info_camera, camera.fx(), camera.fy());
         }
         info.setText(text);
         info.setTextSize(12f);
         box.addView(info);
 
-        Button auto = new Button(this);
-        auto.setText("Auto: match this camera");
-        auto.setOnClickListener(v -> autoConfigure(catalog));
-        box.addView(auto);
-
-        Button advanced = new Button(this);
-        advanced.setText("Advanced tuning...");
-        advanced.setOnClickListener(v -> showTuneDialog(catalog));
-        box.addView(advanced);
-
-        Button server = new Button(this);
-        server.setText("Server URL...");
-        server.setOnClickListener(v -> editServer());
-        box.addView(server);
+        box.addView(newButton(getString(R.string.main_profiles_auto), v -> autoConfigure(catalog)));
+        box.addView(newButton(getString(R.string.main_profiles_advanced), v -> showTuneDialog(catalog)));
+        box.addView(newButton(getString(R.string.main_profiles_server_url), v -> editServer()));
 
         for (ProfileEntry entry : catalog) {
-            Button button = new Button(this);
+            MaterialButton button = newButton(entryLabel(entry), v -> applyNamed(entry.name));
             button.setAllCaps(false);
-            button.setText(entry == nearest ? entry + "  \u2605" : entry.toString());
-            button.setOnClickListener(v -> applyNamed(entry.name));
+            if (entry == nearest) {
+                button.setText(entryLabel(entry) + getString(R.string.main_profiles_nearest_suffix));
+            }
             box.addView(button);
         }
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
-        new AlertDialog.Builder(this)
-                .setTitle("Profiles")
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.main_profiles_title))
                 .setView(scroll)
-                .setNegativeButton("Close", null)
+                .setNegativeButton(getString(R.string.common_close), null)
                 .show();
+    }
+
+    private String entryLabel(ProfileEntry entry) {
+        return getString(R.string.profiles_entry_format, entry.name, entry.fx);
     }
 
     private static ProfileEntry closestEntry(List<ProfileEntry> catalog, float fx, float fy) {
@@ -598,52 +617,51 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     private void autoConfigure(List<ProfileEntry> catalog) {
         CameraSpec camera = CameraSpec.read(this);
         if (camera == null || !camera.valid()) {
-            Toast.makeText(this, "Camera characteristics unavailable", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.main_toast_camera_unavailable),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         ProfileEntry base = closestEntry(catalog, camera.fx(), camera.fy());
         if (base == null) {
-            Toast.makeText(this, "The server returned no usable profiles", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.main_toast_no_usable_profiles),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         String query = "base=" + base.name + String.format(Locale.US,
                 "&fx=%.2f&fy=%.2f&cx=320&cy=240&dev=%s",
                 camera.fx(), camera.fy(), android.os.Build.DEVICE);
-        Toast.makeText(this, String.format(Locale.US, "Closest: %s (fx %.1f) -> %.1f",
-                base.name, base.fx, camera.fx()), Toast.LENGTH_LONG).show();
+        Toast.makeText(this, getString(R.string.main_toast_closest,
+                        base.name, base.fx, camera.fx()), Toast.LENGTH_LONG).show();
         applySpec("custom:" + query, "Auto (" + base.name + ")");
     }
 
     private void showTuneDialog(final List<ProfileEntry> catalog) {
         if (catalog == null || catalog.isEmpty()) {
-            Toast.makeText(this, "No profiles loaded", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.main_toast_no_profiles),
+                    Toast.LENGTH_LONG).show();
             return;
         }
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 24, 48, 24);
-        box.setBackgroundColor(Color.WHITE);
+        box.setPadding(dp(24), dp(12), dp(24), dp(12));
 
         TextView hint = new TextView(this);
-        hint.setText("Пустое поле — оставить значение базового профиля. "
-                + "После «Применить» профиль пересобирается на сервере, а ARCore перезапускается.");
-        hint.setTextColor(Color.DKGRAY);
+        hint.setText(getString(R.string.tune_intro));
         hint.setTextSize(12f);
-        hint.setPadding(0, 0, 0, 12);
+        hint.setPadding(0, 0, 0, dp(6));
         box.addView(hint);
 
         TextView baseHint = new TextView(this);
-        baseHint.setText("Base profile (donor):");
-        baseHint.setTextColor(Color.DKGRAY);
+        baseHint.setText(getString(R.string.tune_base_profile));
         baseHint.setTextSize(12f);
-        baseHint.setPadding(0, 0, 0, 4);
+        baseHint.setPadding(0, 0, 0, dp(2));
         box.addView(baseHint);
 
         final List<String> baseNames = new ArrayList<>();
         List<String> baseLabels = new ArrayList<>();
         for (ProfileEntry entry : catalog) {
             baseNames.add(entry.name);
-            baseLabels.add(entry.toString());
+            baseLabels.add(entryLabel(entry));
         }
         final Spinner baseSpinner = new Spinner(this);
         ArrayAdapter<String> baseAdapter = new ArrayAdapter<>(this,
@@ -652,146 +670,101 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         baseSpinner.setAdapter(baseAdapter);
         box.addView(baseSpinner);
 
-        addHeader(box, "Камера (640×480)");
-        final EditText fx = addField(box, "focal x", "464.56",
-                "Фокусное расстояние по X в пикселях для кадра 640×480. Влияет на масштаб и глубину.");
-        final EditText fy = addField(box, "focal y", "464.56",
-                "Фокусное расстояние по Y в пикселях. Обычно равно focal x.");
-        final EditText cx = addField(box, "principal x", "320",
-                "Главная точка по X. Паспортное значение — 320. Калибровка давала 302–310; "
-                        + "если плоскости смещены вбок, попробуйте 302.");
-        final EditText cy = addField(box, "principal y", "240",
-                "Главная точка по Y. Паспортное значение — 240.");
-        final EditText k0 = addField(box, "distortion k0", "0.001",
-                "Радиальная дисторсия k0. Обычно около нуля.");
-        final EditText k1 = addField(box, "distortion k1", "0",
-                "Дисторсия k1. Обычно 0; большие значения ломают трекинг.");
-        final EditText k2 = addField(box, "distortion k2", "0",
-                "Дисторсия k2. Обычно 0.");
+        addHeader(box, getString(R.string.tune_section_camera));
+        final EditText fx = addField(box, "focal x", "464.56", getString(R.string.tune_hint_fx));
+        final EditText fy = addField(box, "focal y", "464.56", getString(R.string.tune_hint_fy));
+        final EditText cx = addField(box, "principal x", "320", getString(R.string.tune_hint_cx));
+        final EditText cy = addField(box, "principal y", "240", getString(R.string.tune_hint_cy));
+        final EditText k0 = addField(box, "distortion k0", "0.001", getString(R.string.tune_hint_k0));
+        final EditText k1 = addField(box, "distortion k1", "0", getString(R.string.tune_hint_k1));
+        final EditText k2 = addField(box, "distortion k2", "0", getString(R.string.tune_hint_k2));
 
-        addHeader(box, "Синхронизация камеры и IMU");
-        final EditText rs = addField(box, "rolling shutter, нс", "26763333",
-                "Реальное время считывания кадра из метаданных сенсора — 26 763 333 нс (26.76 мс). "
-                        + "Неверное значение сильно ломает глубину при движении.");
-        final EditText tsa = addField(box, "timestamp alignment, нс", "-20000000",
-                "Сдвиг метки времени камеры относительно IMU. Отрицательное значение — камера "
-                        + "считается «раньше». Подбирается по логам DESYNC.");
-        final EditText tb = addField(box, "timebase trust (1/2)", "2",
-                "1 — RUNTIME_CHECK_REQUIRED, 2 — TRUSTED_AS_BOOTTIME. Для этого устройства лучше 2.");
-        final EditText rss = addField(box, "rs source (1/2)", "1",
-                "1 — из профиля, 2 — IMAGE_METADATA. Если камера отдаёт readout-метки, попробуйте 2.");
+        addHeader(box, getString(R.string.tune_section_sync));
+        final EditText rs = addField(box, "rolling shutter, ns", "26763333", getString(R.string.tune_hint_rs));
+        final EditText tsa = addField(box, "timestamp alignment, ns", "-20000000", getString(R.string.tune_hint_tsa));
+        final EditText tb = addField(box, "timebase trust (1/2)", "2", getString(R.string.tune_hint_tb));
+        final EditText rss = addField(box, "rs source (1/2)", "1", getString(R.string.tune_hint_rss));
 
-        addHeader(box, "Положение камеры относительно IMU (lever arm), метры");
-        final EditText px = addField(box, "px", "0",
-                "Сдвиг IMU по X в системе камеры. 0 — безопасный вариант, если реальное плечо неизвестно.");
-        final EditText py = addField(box, "py", "0",
-                "Сдвиг IMU по Y. Обычно 0–0.06.");
-        final EditText pz = addField(box, "pz", "0",
-                "Сдвиг IMU по Z (вдоль оптической оси). Реально не больше ±0.01; большие значения физически невозможны.");
+        addHeader(box, getString(R.string.tune_section_lever));
+        final EditText px = addField(box, "px", "0", getString(R.string.tune_hint_px));
+        final EditText py = addField(box, "py", "0", getString(R.string.tune_hint_py));
+        final EditText pz = addField(box, "pz", "0", getString(R.string.tune_hint_pz));
 
-        addHeader(box, "Поворот камеры к IMU (кватернион w, x, y, z)");
-        final EditText qw = addField(box, "qw", "0.0015",
-                "Компонента w кватерниона. Для этого крепления ≈ 0.0015.");
-        final EditText qx = addField(box, "qx", "-0.7059",
-                "Компонента x. Для этого крепления ≈ −0.706.");
-        final EditText qy = addField(box, "qy", "0.7083",
-                "Компонента y. Для этого крепления ≈ 0.708.");
-        final EditText qz = addField(box, "qz", "-0.0011",
-                "Компонента z. Для этого крепления ≈ −0.001.");
+        addHeader(box, getString(R.string.tune_section_rotation));
+        final EditText qw = addField(box, "qw", "0.0015", getString(R.string.tune_hint_qw));
+        final EditText qx = addField(box, "qx", "-0.7059", getString(R.string.tune_hint_qx));
+        final EditText qy = addField(box, "qy", "0.7083", getString(R.string.tune_hint_qy));
+        final EditText qz = addField(box, "qz", "-0.0011", getString(R.string.tune_hint_qz));
 
-        addHeader(box, "IMU");
-        final EditText gsx = addField(box, "gyro scale x", "1.0286",
-                "Масштаб гироскопа по X. ARCore онлайн оценивает ≈1.03.");
-        final EditText gsy = addField(box, "gyro scale y", "1.0151",
-                "Масштаб гироскопа по Y. ARCore оценивает ≈1.015.");
-        final EditText gsz = addField(box, "gyro scale z", "1.0020",
-                "Масштаб гироскопа по Z. ARCore оценивает ≈1.002.");
-        final EditText asx = addField(box, "accel scale x", "1",
-                "Масштаб акселерометра по X. Норма ≈ 1.0.");
-        final EditText asy = addField(box, "accel scale y", "1",
-                "Масштаб акселерометра по Y. Норма ≈ 1.0.");
-        final EditText asz = addField(box, "accel scale z", "1",
-                "Масштаб акселерометра по Z. Норма ≈ 1.0.");
-        final EditText gn = addField(box, "gyro noise", "0.0005309",
-                "Шум гироскопа. Меньше — больше доверия IMU; больше — больше доверия камере. "
-                        + "Generic-значение 0.0005309.");
-        final EditText an = addField(box, "accel noise", "0.0048836",
-                "Шум акселерометра. Generic-значение 0.0048836.");
-        final EditText gbx = addField(box, "gyro bias x", "0.0046",
-                "Начальное смещение гироскопа по X, рад/с. Измерено на неподвижном участке.");
-        final EditText gby = addField(box, "gyro bias y", "-0.0022",
-                "Начальное смещение гироскопа по Y, рад/с.");
-        final EditText gbz = addField(box, "gyro bias z", "0.0015",
-                "Начальное смещение гироскопа по Z, рад/с.");
+        addHeader(box, getString(R.string.tune_section_imu));
+        final EditText gsx = addField(box, "gyro scale x", "1.0286", getString(R.string.tune_hint_gsx));
+        final EditText gsy = addField(box, "gyro scale y", "1.0151", getString(R.string.tune_hint_gsy));
+        final EditText gsz = addField(box, "gyro scale z", "1.0020", getString(R.string.tune_hint_gsz));
+        final EditText asx = addField(box, "accel scale x", "1", getString(R.string.tune_hint_asx));
+        final EditText asy = addField(box, "accel scale y", "1", getString(R.string.tune_hint_asy));
+        final EditText asz = addField(box, "accel scale z", "1", getString(R.string.tune_hint_asz));
+        final EditText gn = addField(box, "gyro noise", "0.0005309", getString(R.string.tune_hint_gn));
+        final EditText an = addField(box, "accel noise", "0.0048836", getString(R.string.tune_hint_an));
+        final EditText gbx = addField(box, "gyro bias x", "0.0046", getString(R.string.tune_hint_gbx));
+        final EditText gby = addField(box, "gyro bias y", "-0.0022", getString(R.string.tune_hint_gby));
+        final EditText gbz = addField(box, "gyro bias z", "0.0015", getString(R.string.tune_hint_gbz));
 
-        addHeader(box, "Глубина и плоскости");
-        final EditText depth = addField(box, "depth mode (1/2)", "2",
-                "Depth API: 1 — выключен, 2 — включён. Плоскости используют ML-глубину.");
+        addHeader(box, getString(R.string.tune_section_depth));
+        final EditText depth = addField(box, "depth mode (1/2)", "2", getString(R.string.tune_hint_depth));
 
-        Button zero = new Button(this);
-        zero.setText("Пресет: без сдвига времени (tsa=0)");
-        zero.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tsa.setText("0"); tb.setText("2");
-            }
+        MaterialButton zero = newButton(getString(R.string.tune_preset_zero_tsa), v -> {
+            tsa.setText("0");
+            tb.setText("2");
         });
         box.addView(zero, 3);
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Настройка профиля ARCore")
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.tune_title))
                 .setView(scroll)
-                .setPositiveButton("Применить", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String q = "base=" + baseNames.get(baseSpinner.getSelectedItemPosition())
-                                + "&fx=" + val(fx) + "&fy=" + val(fy)
-                                + "&cx=" + val(cx) + "&cy=" + val(cy)
-                                + "&k0=" + val(k0) + "&k1=" + val(k1) + "&k2=" + val(k2)
-                                + "&rs=" + val(rs) + "&tsa=" + val(tsa)
-                                + "&tb=" + val(tb) + "&rss=" + val(rss) + "&depth=" + val(depth)
-                                + "&px=" + val(px) + "&py=" + val(py) + "&pz=" + val(pz)
-                                + "&qw=" + val(qw) + "&qx=" + val(qx) + "&qy=" + val(qy) + "&qz=" + val(qz)
-                                + "&gsx=" + val(gsx) + "&gsy=" + val(gsy) + "&gsz=" + val(gsz)
-                                + "&asx=" + val(asx) + "&asy=" + val(asy) + "&asz=" + val(asz)
-                                + "&gn=" + val(gn) + "&an=" + val(an)
-                                + "&gbx=" + val(gbx) + "&gby=" + val(gby) + "&gbz=" + val(gbz);
-                        applyCustom(q);
-                    }
+                .setPositiveButton(getString(R.string.tune_apply), (dialog, which) -> {
+                    String q = "base=" + baseNames.get(baseSpinner.getSelectedItemPosition())
+                            + "&fx=" + val(fx) + "&fy=" + val(fy)
+                            + "&cx=" + val(cx) + "&cy=" + val(cy)
+                            + "&k0=" + val(k0) + "&k1=" + val(k1) + "&k2=" + val(k2)
+                            + "&rs=" + val(rs) + "&tsa=" + val(tsa)
+                            + "&tb=" + val(tb) + "&rss=" + val(rss) + "&depth=" + val(depth)
+                            + "&px=" + val(px) + "&py=" + val(py) + "&pz=" + val(pz)
+                            + "&qw=" + val(qw) + "&qx=" + val(qx) + "&qy=" + val(qy) + "&qz=" + val(qz)
+                            + "&gsx=" + val(gsx) + "&gsy=" + val(gsy) + "&gsz=" + val(gsz)
+                            + "&asx=" + val(asx) + "&asy=" + val(asy) + "&asz=" + val(asz)
+                            + "&gn=" + val(gn) + "&an=" + val(an)
+                            + "&gbx=" + val(gbx) + "&gby=" + val(gby) + "&gbz=" + val(gbz);
+                    applyCustom(q);
                 })
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(getString(R.string.common_cancel), null)
                 .show();
     }
 
     private void addHeader(LinearLayout parent, String text) {
         TextView tv = new TextView(this);
         tv.setText(text);
-        tv.setTextColor(Color.rgb(0, 90, 160));
         tv.setTextSize(16f);
-        tv.setPadding(0, 24, 0, 4);
+        tv.setPadding(0, dp(12), 0, dp(2));
         parent.addView(tv);
     }
 
     private EditText addField(LinearLayout parent, String label, String value, String description) {
         TextView tv = new TextView(this);
         tv.setText(label);
-        tv.setTextColor(Color.BLACK);
         tv.setTextSize(14f);
-        tv.setPadding(0, 16, 0, 0);
+        tv.setPadding(0, dp(8), 0, 0);
         EditText et = new EditText(this);
         et.setText(value);
-        et.setTextColor(Color.BLACK);
         et.setInputType(InputType.TYPE_CLASS_NUMBER
                 | InputType.TYPE_NUMBER_FLAG_DECIMAL
                 | InputType.TYPE_NUMBER_FLAG_SIGNED);
         TextView desc = new TextView(this);
         desc.setText(description);
-        desc.setTextColor(Color.DKGRAY);
         desc.setTextSize(12f);
-        desc.setPadding(0, 0, 0, 8);
+        desc.setPadding(0, 0, 0, dp(4));
         parent.addView(tv);
         parent.addView(et);
         parent.addView(desc);
@@ -824,20 +797,17 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                         || a == ArCoreApk.Availability.UNKNOWN_TIMED_OUT)
                         && !installDialogShown) {
                     installDialogShown = true;
-                    new AlertDialog.Builder(this)
-                            .setTitle("ARCore is not available")
-                            .setMessage("ARCore reports: " + a + "\n\n"
-                                    + "You can try installing/updating Google Play Services for AR.")
-                            .setPositiveButton("Install ARCore...", (d, w) ->
+                    new MaterialAlertDialogBuilder(this)
+                            .setTitle(getString(R.string.main_unavailable_title))
+                            .setMessage(getString(R.string.main_unavailable_message, String.valueOf(a)))
+                            .setPositiveButton(getString(R.string.main_unavailable_install), (d, w) ->
                                     ArCoreInstaller.showInstallDialog(
                                             this, arCoreApkUrl(), String.valueOf(a)))
-                            .setNegativeButton("Close", null)
+                            .setNegativeButton(getString(R.string.common_close), null)
                             .show();
                 } else {
-                    showError("ARCore is not available",
-                            "ARCore reports: " + a + "\n\n"
-                                    + "Install/update Google Play Services for AR and a device profile, "
-                                    + "then reopen this screen. See docs/02-profiles.md.");
+                    showError(getString(R.string.main_unavailable_title),
+                            getString(R.string.main_unavailable_hint, String.valueOf(a)));
                 }
                 return;
             }
@@ -865,7 +835,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         } catch (Throwable t) {
             ToolkitLog.e(TAG, "onResume FAILED", t);
             closeSessionQuietly();
-            showError("ARCore session failed", String.valueOf(t));
+            showError(getString(R.string.main_session_failed_title), String.valueOf(t));
         }
         if (surfaceView != null) surfaceView.onResume();
     }
