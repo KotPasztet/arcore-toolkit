@@ -2,6 +2,9 @@
 
 # Getting started
 
+> Never used ADB or built an APK? Start with the command-by-command
+> [beginner cases](08-beginner-cases.md).
+
 ## 1. Requirements
 
 | Component | Version |

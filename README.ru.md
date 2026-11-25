@@ -165,6 +165,7 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 | [docs/ru/05-marker-ar.md](docs/ru/05-marker-ar.md) | маркеры AprilTag, размер, прототип |
 | [docs/ru/06-shim.md](docs/ru/06-shim.md) | архитектура шима, системы координат, оверрайды |
 | [docs/ru/07-troubleshooting.md](docs/ru/07-troubleshooting.md) | логи, ANR, чёрный экран, восстановление профиля |
+| [docs/ru/08-beginner-cases.md](docs/ru/08-beginner-cases.md) | для новичков: печать маркера, сборка/установка APK, запуск AR |
 | [docs/ru/devices.md](docs/ru/devices.md) | кейсы: POCO X6 Pro, Huawei P30 Lite |
 | [docs/ru/reverse-engineering.md](docs/ru/reverse-engineering.md) | как реверсили базу профилей и обфускацию ключа |
 
