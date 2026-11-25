@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Render the hybrid AprilTag 36h11 marker sheet (A3 landscape, 300 DPI).
+"""Render the hybrid AprilTag 36h11 marker sheet (300 DPI).
 
-Layout: one 110 mm tag (ID 0) in the centre and four 55 mm tags (IDs 1..4) at
-(+/-150, +/-104) mm.  The shim has the same layout built in; the generated
-`bundle_a3_hybrid_tags.txt` can be copied to the target app's files directory as
-`tags` to override it.
+A3 landscape: one 110 mm tag (ID 0) in the centre and four 55 mm tags
+(IDs 1..4) at (+/-150, +/-104) mm.
+
+A4 portrait: one 80 mm tag (ID 0) in the centre and four 38 mm tags at
+(+/-75, +/-100) mm.  Use this when the printer only handles A4.
+
+The shim's built-in layout is the A3 one.  The generated
+`bundle_<paper>_hybrid_tags.txt` can be copied to the target app's files
+directory as `tags` to override the layout.
 
 A 100 mm scale bar is printed in the top margin.  Print at 100% / actual size.
 """
+import argparse
 import io
 import os
 import urllib.request
@@ -15,23 +21,44 @@ import urllib.request
 from PIL import Image, ImageDraw, ImageFont
 
 DPI = 300
-SHEET_W_MM = 420.0
-SHEET_H_MM = 297.0
-SHEET_W = int(round(SHEET_W_MM / 25.4 * DPI))
-SHEET_H = int(round(SHEET_H_MM / 25.4 * DPI))
-
-# id, x_mm, y_mm, yaw_deg, black-square size_mm
-TAGS = [
-    (0, 0.0, 0.0, 0.0, 110.0),
-    (1, -150.0, -104.0, 0.0, 55.0),
-    (2, 150.0, -104.0, 0.0, 55.0),
-    (3, -150.0, 104.0, 0.0, 55.0),
-    (4, 150.0, 104.0, 0.0, 55.0),
-]
 URL = "https://raw.githubusercontent.com/AprilRobotics/apriltag-imgs/master/tag36h11/tag36_11_{:05d}.png"
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
+PAPERS = {
+    "a3": {
+        "width": 420.0,
+        "height": 297.0,
+        "tags": [
+            (0, 0.0, 0.0, 0.0, 110.0),
+            (1, -150.0, -104.0, 0.0, 55.0),
+            (2, 150.0, -104.0, 0.0, 55.0),
+            (3, -150.0, 104.0, 0.0, 55.0),
+            (4, 150.0, 104.0, 0.0, 55.0),
+        ],
+        "title": "AprilTag 36h11 hybrid | center 110 mm | corners 55 mm | A3 100%",
+        "title_size": 40,
+        "small_size": 26,
+        "bar_x": 286.0,
+        "bar_y": 5.0,
+    },
+    "a4": {
+        "width": 210.0,
+        "height": 297.0,
+        "tags": [
+            (0, 0.0, 0.0, 0.0, 80.0),
+            (1, -75.0, -100.0, 0.0, 38.0),
+            (2, 75.0, -100.0, 0.0, 38.0),
+            (3, -75.0, 100.0, 0.0, 38.0),
+            (4, 75.0, 100.0, 0.0, 38.0),
+        ],
+        "title": "AprilTag 36h11 hybrid | center 80 mm | corners 38 mm | A4 100%",
+        "title_size": 28,
+        "small_size": 20,
+        "bar_x": 80.0,
+        "bar_y": 13.0,
+    },
+}
 
 
 def mm(value: float) -> int:
@@ -53,11 +80,18 @@ def font(size_px: int):
 
 
 def main() -> None:
-    canvas = Image.new("RGB", (SHEET_W, SHEET_H), "white")
-    cx = SHEET_W / 2.0
-    cy = SHEET_H / 2.0
+    parser = argparse.ArgumentParser(description="Render a hybrid AprilTag sheet")
+    parser.add_argument("--paper", choices=sorted(PAPERS), default="a3")
+    args = parser.parse_args()
 
-    for tag_id, x_mm, y_mm, _yaw, size_mm in TAGS:
+    paper = PAPERS[args.paper]
+    sheet_w = int(round(paper["width"] / 25.4 * DPI))
+    sheet_h = int(round(paper["height"] / 25.4 * DPI))
+    canvas = Image.new("RGB", (sheet_w, sheet_h), "white")
+    cx = sheet_w / 2.0
+    cy = sheet_h / 2.0
+
+    for tag_id, x_mm, y_mm, _yaw, size_mm in paper["tags"]:
         image = load_tag(tag_id)
         total_mm = size_mm * 10.0 / 8.0      # 10 modules incl. white margin
         total_px = mm(total_mm)
@@ -67,32 +101,28 @@ def main() -> None:
         canvas.paste(image, (x, y))
 
     draw = ImageDraw.Draw(canvas)
-    title = font(40)
-    small = font(26)
-    draw.text((mm(12), mm(2)),
-              "AprilTag 36h11 hybrid | center 110 mm | corners 55 mm | A3 100%",
-              fill="black", font=title)
+    title = font(paper["title_size"])
+    small = font(paper["small_size"])
+    draw.text((mm(8), mm(2)), paper["title"], fill="black", font=title)
 
-    # 100 mm scale bar in the top-right margin.
-    bx = mm(286)
-    by = mm(5)
+    bx = mm(paper["bar_x"])
+    by = mm(paper["bar_y"])
     draw.line([(bx, by), (bx + mm(100), by)], fill="black", width=5)
     for t in range(0, 101, 10):
         tx = bx + mm(t)
         draw.line([(tx, by - mm(2)), (tx, by + mm(2))], fill="black", width=2)
     draw.text((bx, by + mm(2.5)), "100 mm scale bar", fill="black", font=small)
 
-    pdf = os.path.join(HERE, "bundle_a3_hybrid.pdf")
-    png = os.path.join(HERE, "bundle_a3_hybrid.png")
-    manifest = os.path.join(HERE, "bundle_a3_hybrid_tags.txt")
-    canvas.save(pdf, "PDF", resolution=DPI)
-    canvas.save(png, "PNG", dpi=(DPI, DPI))
-    with open(manifest, "w", encoding="ascii") as fh:
+    base = os.path.join(HERE, f"bundle_{args.paper}_hybrid")
+    canvas.save(base + ".pdf", "PDF", resolution=DPI)
+    canvas.save(base + ".png", "PNG", dpi=(DPI, DPI))
+    with open(base + "_tags.txt", "w", encoding="ascii") as fh:
         fh.write("# id x_mm y_mm yaw_deg size_mm\n")
-        for tag_id, x_mm, y_mm, yaw, size_mm in TAGS:
+        for tag_id, x_mm, y_mm, yaw, size_mm in paper["tags"]:
             fh.write(f"{tag_id} {x_mm:g} {y_mm:g} {yaw:g} {size_mm:g}\n")
-    print("written", pdf, png, manifest)
-    print("A3 landscape", SHEET_W, "x", SHEET_H, "px at", DPI, "DPI")
+    print("written", base + ".pdf", base + ".png", base + "_tags.txt")
+    print(args.paper.upper(), paper["width"], "x", paper["height"], "mm",
+          sheet_w, "x", sheet_h, "px at", DPI, "DPI")
 
 
 if __name__ == "__main__":

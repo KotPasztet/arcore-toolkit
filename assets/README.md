@@ -5,6 +5,7 @@ Printable targets are generated, not committed:
 ```bash
 python3 tools/calib/make_marker.py      # marker_a4_150mm.pdf (single tag, ID 0)
 python3 tools/calib/make_bundle.py      # bundle_a3_hybrid.pdf (5-tag hybrid sheet)
+python3 tools/calib/make_bundle.py --paper a4  # bundle_a4_hybrid.pdf
 python3 tools/calib/make_aprilgrid.py   # aprilgrid_a4_6x6_25mm.pdf (Kalibr target)
 ```
 

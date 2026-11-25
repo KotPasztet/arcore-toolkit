@@ -22,11 +22,19 @@ python3 tools/calib/make_bundle.py
 # bundle_a3_hybrid_tags.txt — matching shim layout
 ```
 
-The shim has this layout built in.  To override it (or to use a custom sheet),
-copy the manifest to the target app and adjust it if needed:
+The shim has the A3 layout built in.  For an A4-only printer use:
 
 ```bash
-adb push tools/calib/bundle_a3_hybrid_tags.txt \
+python3 tools/calib/make_bundle.py --paper a4
+# central ID 0 = 80 mm at (0,0); corners IDs 1..4 = 38 mm at (+/-75, +/-100) mm
+# bundle_a4_hybrid_tags.txt matches this sheet
+```
+
+To override the built-in layout, copy the matching manifest to the target app
+and adjust it if needed:
+
+```bash
+adb push tools/calib/bundle_a4_hybrid_tags.txt \
   /sdcard/Android/data/<pkg>/files/tags
 ```
 

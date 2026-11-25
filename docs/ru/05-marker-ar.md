@@ -24,11 +24,19 @@ python3 tools/calib/make_bundle.py
 # bundle_a3_hybrid_tags.txt — раскладка для шима
 ```
 
-Эта раскладка встроена в шим. Чтобы переопределить её (или использовать свой
-лист), положите манифест в папку данных приложения:
+A3-раскладка встроена в шим. Для принтера только с A4:
 
 ```bash
-adb push tools/calib/bundle_a3_hybrid_tags.txt \
+python3 tools/calib/make_bundle.py --paper a4
+# центральный ID 0 = 80 мм в (0,0); угловые ID 1..4 = 38 мм в (+/-75, +/-100) мм
+# bundle_a4_hybrid_tags.txt соответствует этому листу
+```
+
+Чтобы переопределить встроенную раскладку, положите соответствующий манифест в
+папку данных приложения:
+
+```bash
+adb push tools/calib/bundle_a4_hybrid_tags.txt \
   /sdcard/Android/data/<pkg>/files/tags
 ```
 
