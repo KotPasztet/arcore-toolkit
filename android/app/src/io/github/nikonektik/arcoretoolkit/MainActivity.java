@@ -120,8 +120,8 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.i(TAG, "=== start ===");
-        Log.i(TAG, "device=" + android.os.Build.DEVICE + " model=" + android.os.Build.MODEL);
+        ToolkitLog.i(TAG, "=== start ===");
+        ToolkitLog.i(TAG, "device=" + android.os.Build.DEVICE + " model=" + android.os.Build.MODEL);
 
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 1);
@@ -197,10 +197,10 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             @Override
             public boolean onTouch(View v, MotionEvent e) {
                 if (e.getAction() == MotionEvent.ACTION_UP) {
-                    Log.i(TAG, "TOUCH up x=" + e.getX() + " y=" + e.getY());
+                    ToolkitLog.i(TAG, "TOUCH up x=" + e.getX() + " y=" + e.getY());
                     placeObject(e.getX(), e.getY());
                 } else {
-                    Log.i(TAG, "TOUCH action=" + e.getAction() + " x=" + e.getX() + " y=" + e.getY());
+                    ToolkitLog.i(TAG, "TOUCH action=" + e.getAction() + " x=" + e.getX() + " y=" + e.getY());
                 }
                 return true;
             }
@@ -209,12 +209,12 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
 
     private void placeObject(float x, float y) {
         Frame frame = lastFrame;
-        Log.i(TAG, "PLACE x=" + x + " y=" + y + " frame=" + (frame != null));
+        ToolkitLog.i(TAG, "PLACE x=" + x + " y=" + y + " frame=" + (frame != null));
         if (frame == null) return;
         boolean placedNow = false;
         try {
             List<HitResult> hits = frame.hitTest(x, y);
-            Log.i(TAG, "HITTEST planeHits=" + hits.size());
+            ToolkitLog.i(TAG, "HITTEST planeHits=" + hits.size());
             for (HitResult hit : hits) {
                 Trackable t = hit.getTrackable();
                 if (t instanceof Plane) {
@@ -229,7 +229,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             }
             if (!placedNow) {
                 List<HitResult> instant = frame.hitTestInstantPlacement(x, y, 1.0f);
-                Log.i(TAG, "HITTEST instantHits=" + instant.size());
+                ToolkitLog.i(TAG, "HITTEST instantHits=" + instant.size());
                 for (HitResult hit : instant) {
                     if (hit.getTrackable() != null) {
                         addAnchor(hit, "INSTANT");
@@ -244,12 +244,12 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 Anchor a = session.createAnchor(pose);
                 anchors.add(a);
                 placed++;
-                Log.i(TAG, "PLACED_FIXED total=" + placed + " pose="
+                ToolkitLog.i(TAG, "PLACED_FIXED total=" + placed + " pose="
                         + pose.tx() + "," + pose.ty() + "," + pose.tz());
                 placedNow = true;
             }
         } catch (Throwable t) {
-            Log.e(TAG, "hitTest failed", t);
+            ToolkitLog.e(TAG, "hitTest failed", t);
         }
         if (placedNow) {
             updateHud();
@@ -263,7 +263,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         if ("INSTANT".equals(kind)) {
             Toast.makeText(this, "Нет плоскости: якорь временный, объект может смещаться", Toast.LENGTH_SHORT).show();
         }
-        Log.i(TAG, "PLACED_" + kind + " total=" + placed + " pose="
+        ToolkitLog.i(TAG, "PLACED_" + kind + " total=" + placed + " pose="
                 + hit.getHitPose().tx() + "," + hit.getHitPose().ty() + "," + hit.getHitPose().tz());
     }
 
@@ -371,7 +371,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 .putString(PREF_PENDING_LABEL, label)
                 .apply();
         recoveryShown = false;
-        Log.i(TAG, "APPLY " + label + " -> " + url);
+        ToolkitLog.i(TAG, "APPLY " + label + " -> " + url);
         Toast.makeText(this, "Applying " + label + "...", Toast.LENGTH_SHORT).show();
         try {
             Intent intent = new Intent();
@@ -381,7 +381,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         } catch (Throwable t) {
-            Log.e(TAG, "switch failed", t);
+            ToolkitLog.e(TAG, "switch failed", t);
             Toast.makeText(this, "Switch failed: " + t, Toast.LENGTH_LONG).show();
             return;
         }
@@ -805,10 +805,10 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.i(TAG, "onResume");
+        ToolkitLog.i(TAG, "onResume");
         try {
             ArCoreApk.Availability a = ArCoreApk.getInstance().checkAvailability(this);
-            Log.i(TAG, "availability=" + a);
+            ToolkitLog.i(TAG, "availability=" + a);
             if (a == ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED
                     || a == ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD) {
                 if (ArCoreInstaller.retryPending(this)) return;
@@ -819,7 +819,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 return;
             }
             if (!a.isSupported()) {
-                Log.e(TAG, "ARCore not supported: " + a);
+                ToolkitLog.e(TAG, "ARCore not supported: " + a);
                 if ((a == ArCoreApk.Availability.UNKNOWN_ERROR
                         || a == ArCoreApk.Availability.UNKNOWN_TIMED_OUT)
                         && !installDialogShown) {
@@ -848,22 +848,22 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 config.setFocusMode(Config.FocusMode.AUTO);
                 config.setInstantPlacementMode(Config.InstantPlacementMode.LOCAL_Y_UP);
                 session.configure(config);
-                Log.i(TAG, "SESSION_CREATED_OK configPlane=" + config.getPlaneFindingMode()
+                ToolkitLog.i(TAG, "SESSION_CREATED_OK configPlane=" + config.getPlaneFindingMode()
                         + " configInstant=" + config.getInstantPlacementMode());
             }
             session.resume();
-            Log.i(TAG, "SESSION_RESUMED_OK");
+            ToolkitLog.i(TAG, "SESSION_RESUMED_OK");
             markProfileWorking();
         } catch (com.google.ar.core.exceptions.FatalException fatal) {
-            Log.e(TAG, "onResume FATAL: profile rejected", fatal);
+            ToolkitLog.e(TAG, "onResume FATAL: profile rejected", fatal);
             closeSessionQuietly();
             showRecoveryDialog();
         } catch (com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException incompatible) {
-            Log.e(TAG, "onResume incompatible device/profile", incompatible);
+            ToolkitLog.e(TAG, "onResume incompatible device/profile", incompatible);
             closeSessionQuietly();
             showRecoveryDialog();
         } catch (Throwable t) {
-            Log.e(TAG, "onResume FAILED", t);
+            ToolkitLog.e(TAG, "onResume FAILED", t);
             closeSessionQuietly();
             showError("ARCore session failed", String.valueOf(t));
         }
@@ -883,16 +883,16 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
         try {
             if (surfaceView != null) surfaceView.onPause();
         } catch (Throwable t) {
-            Log.e(TAG, "surface pause failed", t);
+            ToolkitLog.e(TAG, "surface pause failed", t);
         }
         if (session != null) {
             try {
                 session.pause();
             } catch (Throwable t) {
-                Log.e(TAG, "session pause failed", t);
+                ToolkitLog.e(TAG, "session pause failed", t);
             }
         }
-        Log.i(TAG, "onPause");
+        ToolkitLog.i(TAG, "onPause");
     }
 
     @Override
@@ -908,7 +908,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        Log.i(TAG, "onSurfaceCreated");
+        ToolkitLog.i(TAG, "onSurfaceCreated");
         try {
             GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
             background = new BackgroundRenderer();
@@ -919,22 +919,22 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
             objectRenderer.createOnGlThread();
             if (session != null && background.getTextureId() != 0) {
                 session.setCameraTextureName(background.getTextureId());
-                Log.i(TAG, "setCameraTextureName=" + background.getTextureId());
+                ToolkitLog.i(TAG, "setCameraTextureName=" + background.getTextureId());
             }
         } catch (Throwable t) {
-            Log.e(TAG, "GL setup failed", t);
+            ToolkitLog.e(TAG, "GL setup failed", t);
         }
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
-        Log.i(TAG, "onSurfaceChanged " + width + "x" + height);
+        ToolkitLog.i(TAG, "onSurfaceChanged " + width + "x" + height);
         GLES20.glViewport(0, 0, width, height);
         if (session != null && width > 0 && height > 0) {
             try {
                 session.setDisplayGeometry(getDisplayRotation(), width, height);
             } catch (Throwable t) {
-                Log.e(TAG, "setDisplayGeometry failed", t);
+                ToolkitLog.e(TAG, "setDisplayGeometry failed", t);
             }
         }
     }
@@ -965,7 +965,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 float[] f = in.getFocalLength();
                 float[] pp = in.getPrincipalPoint();
                 com.google.ar.core.Pose cp = camera.getPose();
-                Log.i(TAG, "STATUS frame=" + frameCount
+                ToolkitLog.i(TAG, "STATUS frame=" + frameCount
                         + " tracking=" + camera.getTrackingState()
                         + " planes=" + planes
                         + " anchors=" + anchors.size()
@@ -992,7 +992,7 @@ public class MainActivity extends Activity implements GLSurfaceView.Renderer {
                 }
             }
         } catch (Throwable t) {
-            Log.e(TAG, "frame FAILED", t);
+            ToolkitLog.e(TAG, "frame FAILED", t);
         }
     }
 

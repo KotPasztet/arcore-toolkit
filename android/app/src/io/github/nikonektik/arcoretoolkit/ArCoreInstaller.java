@@ -148,7 +148,7 @@ public final class ArCoreInstaller {
                 return;
             }
         } catch (Throwable t) {
-            Log.w(TAG, "ARCore install request failed", t);
+            ToolkitLog.w(TAG, "ARCore install request failed", t);
         }
         try {
             activity.startActivity(new Intent(Intent.ACTION_VIEW,
@@ -232,7 +232,7 @@ public final class ArCoreInstaller {
                 install(activity, apk);
             } catch (Throwable t) {
                 failure = t;
-                Log.e(TAG, "ARCore download/install failed", t);
+                ToolkitLog.e(TAG, "ARCore download/install failed", t);
             } finally {
                 if (!apk.exists()) part.delete();
             }
@@ -320,7 +320,7 @@ public final class ArCoreInstaller {
             for (byte b : digest) hex.append(String.format(Locale.US, "%02x", b & 0xff));
             return AR_CORE_CERT_SHA256.equalsIgnoreCase(hex.toString());
         } catch (Throwable t) {
-            Log.e(TAG, "cannot verify APK", t);
+            ToolkitLog.e(TAG, "cannot verify APK", t);
             return false;
         }
     }

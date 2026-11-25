@@ -328,9 +328,9 @@ public class CalibrationActivity extends Activity
                 }
             }
         } catch (Throwable t) {
-            Log.e(TAG, "selectCamera failed", t);
+            ToolkitLog.e(TAG, "selectCamera failed", t);
         }
-        Log.i(TAG, "camera=" + cameraId + " frame=" + frameSize + " orientation=" + sensorOrientation);
+        ToolkitLog.i(TAG, "camera=" + cameraId + " frame=" + frameSize + " orientation=" + sensorOrientation);
         if (!cameraFound) {
             Toast.makeText(this, "Задняя камера не найдена", Toast.LENGTH_LONG).show();
         }
@@ -414,14 +414,14 @@ public class CalibrationActivity extends Activity
                 @Override
                 public void onError(CameraDevice camera, int error) {
                     opening = false;
-                    Log.e(TAG, "camera error " + error);
+                    ToolkitLog.e(TAG, "camera error " + error);
                     camera.close();
                     cameraDevice = null;
                 }
             }, backgroundHandler);
         } catch (Throwable t) {
             opening = false;
-            Log.e(TAG, "openCamera failed", t);
+            ToolkitLog.e(TAG, "openCamera failed", t);
             Toast.makeText(this, "Камера недоступна: " + t, Toast.LENGTH_LONG).show();
         }
     }
@@ -457,15 +457,15 @@ public class CalibrationActivity extends Activity
                                     CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
                         }
                         session.setRepeatingRequest(b.build(), null, backgroundHandler);
-                        Log.i(TAG, "session configured " + frameSize + " fps=30");
+                        ToolkitLog.i(TAG, "session configured " + frameSize + " fps=30");
                     } catch (Throwable t) {
-                        Log.e(TAG, "preview request failed", t);
+                        ToolkitLog.e(TAG, "preview request failed", t);
                     }
                 }
 
                 @Override
                 public void onConfigureFailed(CameraCaptureSession session) {
-                    Log.e(TAG, "session configure failed");
+                    ToolkitLog.e(TAG, "session configure failed");
                     try { cameraDevice.close(); } catch (Throwable ignored) {}
                     cameraDevice = null;
                     runOnUiThread(new Runnable() {
@@ -478,7 +478,7 @@ public class CalibrationActivity extends Activity
                 }
             }, backgroundHandler);
         } catch (Throwable t) {
-            Log.e(TAG, "createSession failed", t);
+            ToolkitLog.e(TAG, "createSession failed", t);
         }
     }
 
@@ -527,7 +527,7 @@ public class CalibrationActivity extends Activity
             lastSavedNs = ts;
             if (frameIndex % 10 == 0) framesWriter.flush();
         } catch (Throwable t) {
-            Log.e(TAG, "saveFrame failed", t);
+            ToolkitLog.e(TAG, "saveFrame failed", t);
         } finally {
             if (image != null) image.close();
         }
@@ -562,7 +562,7 @@ public class CalibrationActivity extends Activity
             mainHandler.post(statusTick);
             Toast.makeText(this, "Запись начата", Toast.LENGTH_SHORT).show();
         } catch (Throwable t) {
-            Log.e(TAG, "startRecording failed", t);
+            ToolkitLog.e(TAG, "startRecording failed", t);
             Toast.makeText(this, "Ошибка старта: " + t, Toast.LENGTH_LONG).show();
             stopRecording();
         }
@@ -607,7 +607,7 @@ public class CalibrationActivity extends Activity
             w.write("exposure_range=" + c.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE) + "\n");
             w.close();
         } catch (Throwable t) {
-            Log.e(TAG, "writeMeta failed", t);
+            ToolkitLog.e(TAG, "writeMeta failed", t);
         }
     }
 

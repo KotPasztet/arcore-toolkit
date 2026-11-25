@@ -104,7 +104,7 @@ public class MarkerActivity extends Activity {
             System.loadLibrary("opencv_java4");
             opencvReady = true;
         } catch (Throwable t) {
-            Log.e(TAG, "OpenCV native library unavailable", t);
+            ToolkitLog.e(TAG, "OpenCV native library unavailable", t);
             TextView message = new TextView(this);
             message.setText("Marker AR is unavailable on this device:\n\n"
                     + "OpenCV native library could not be loaded.\n" + t);
@@ -219,7 +219,7 @@ public class MarkerActivity extends Activity {
             }
             return best != null ? best : (fallback != null ? fallback : new Size(640, 480));
         } catch (Throwable t) {
-            Log.e(TAG, "chooseDetectionSize failed", t);
+            ToolkitLog.e(TAG, "chooseDetectionSize failed", t);
             return new Size(640, 480);
         }
     }
@@ -330,17 +330,17 @@ public class MarkerActivity extends Activity {
                 }
                 @Override public void onError(CameraDevice camera, int error) {
                     opening = false;
-                    Log.e(TAG, "camera error " + error);
+                    ToolkitLog.e(TAG, "camera error " + error);
                     camera.close();
                     cameraDevice = null;
                     runOnUiThread(() -> Toast.makeText(MarkerActivity.this,
                             "Camera error " + error, Toast.LENGTH_LONG).show());
                 }
             }, bgHandler);
-            Log.i(TAG, "camera=" + cameraId + " size=" + detW + "x" + detH);
+            ToolkitLog.i(TAG, "camera=" + cameraId + " size=" + detW + "x" + detH);
         } catch (Throwable t) {
             opening = false;
-            Log.e(TAG, "openCamera failed", t);
+            ToolkitLog.e(TAG, "openCamera failed", t);
             runOnUiThread(() -> Toast.makeText(this, "Camera unavailable: " + t,
                     Toast.LENGTH_LONG).show());
         }
@@ -367,13 +367,13 @@ public class MarkerActivity extends Activity {
                                     CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
                         }
                         session.setRepeatingRequest(b.build(), null, bgHandler);
-                        Log.i(TAG, "session configured " + detW + "x" + detH);
+                        ToolkitLog.i(TAG, "session configured " + detW + "x" + detH);
                     } catch (Throwable t) {
-                        Log.e(TAG, "request failed", t);
+                        ToolkitLog.e(TAG, "request failed", t);
                     }
                 }
                 @Override public void onConfigureFailed(CameraCaptureSession session) {
-                    Log.e(TAG, "configure failed");
+                    ToolkitLog.e(TAG, "configure failed");
                     try { cameraDevice.close(); } catch (Throwable ignored) {}
                     cameraDevice = null;
                     runOnUiThread(() -> Toast.makeText(MarkerActivity.this,
@@ -381,7 +381,7 @@ public class MarkerActivity extends Activity {
                 }
             }, bgHandler);
         } catch (Throwable t) {
-            Log.e(TAG, "createSession failed", t);
+            ToolkitLog.e(TAG, "createSession failed", t);
         }
     }
 
@@ -412,7 +412,7 @@ public class MarkerActivity extends Activity {
                     try {
                         detect();
                     } catch (Throwable t) {
-                        Log.e(TAG, "detect failed", t);
+                        ToolkitLog.e(TAG, "detect failed", t);
                     } finally {
                         busy.set(false);
                     }
@@ -420,7 +420,7 @@ public class MarkerActivity extends Activity {
             });
         } catch (Throwable t) {
             busy.set(false);
-            Log.e(TAG, "onFrame failed", t);
+            ToolkitLog.e(TAG, "onFrame failed", t);
         } finally {
             if (image != null) image.close();
         }
@@ -530,7 +530,7 @@ public class MarkerActivity extends Activity {
                     + tvec.get(1, 0)[0] * tvec.get(1, 0)[0]
                     + tvec.get(2, 0)[0] * tvec.get(2, 0)[0]);
             detected++;
-            Log.i(TAG, "id=" + id + " dist=" + String.format("%.3f", dist)
+            ToolkitLog.i(TAG, "id=" + id + " dist=" + String.format("%.3f", dist)
                     + " t=(" + String.format("%.3f", tvec.get(0, 0)[0]) + ","
                     + String.format("%.3f", tvec.get(1, 0)[0]) + ","
                     + String.format("%.3f", tvec.get(2, 0)[0]) + ") err="
@@ -540,7 +540,7 @@ public class MarkerActivity extends Activity {
             overlay.setPose(id, dist, err, mc, cp, frames, detected);
             overlay.postInvalidate();
         } catch (Throwable t) {
-            Log.e(TAG, "detect failed", t);
+            ToolkitLog.e(TAG, "detect failed", t);
         } finally {
             releaseAll(gray, ids, img, obj, rvec, tvec, reproj, cubeObj, cubeImg);
             for (Mat m : corners) releaseAll(m);

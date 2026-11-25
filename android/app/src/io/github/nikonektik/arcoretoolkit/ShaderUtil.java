@@ -17,7 +17,7 @@ public final class ShaderUtil {
         int[] status = new int[1];
         GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, status, 0);
         if (status[0] != GLES20.GL_TRUE) {
-            Log.e("ShaderUtil", "link failed: " + GLES20.glGetProgramInfoLog(program));
+            ToolkitLog.e("ShaderUtil", "link failed: " + GLES20.glGetProgramInfoLog(program));
             GLES20.glDeleteProgram(program);
             return 0;
         }
@@ -31,7 +31,7 @@ public final class ShaderUtil {
         int[] status = new int[1];
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, status, 0);
         if (status[0] != GLES20.GL_TRUE) {
-            Log.e("ShaderUtil", "compile failed: " + GLES20.glGetShaderInfoLog(shader));
+            ToolkitLog.e("ShaderUtil", "compile failed: " + GLES20.glGetShaderInfoLog(shader));
             GLES20.glDeleteShader(shader);
             return 0;
         }
