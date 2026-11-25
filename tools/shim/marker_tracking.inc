@@ -119,8 +119,8 @@ static MarkerTuning g_mt = {
 
 /* Physical layout of the marker sheet.  Coordinates are in the sheet frame:
  * x right, y down, z out of the paper; yaw is degrees around z; size is the
- * printed black square in metres.  The default is the A3 hybrid sheet:
- * one 110 mm tag in the centre and four 55 mm tags at (150, 104) mm. */
+ * printed black square in metres.  The default is the A4 hybrid sheet:
+ * one 80 mm tag in the centre and four 38 mm tags at (75, 100) mm. */
 typedef struct {
     int id;
     double x, y, z;
@@ -132,12 +132,13 @@ static MarkerTag g_mt_tags[MT_MAX_TAGS];
 static int g_mt_ntags;
 
 static void mt_set_default_tags(void) {
+    /* Default is the A4 portrait hybrid sheet (80 mm centre, 38 mm corners). */
     g_mt_ntags = 5;
-    g_mt_tags[0] = (MarkerTag){0, 0.0, 0.0, 0.0, 0.0, 0.110};
-    g_mt_tags[1] = (MarkerTag){1, -0.150, -0.104, 0.0, 0.0, 0.055};
-    g_mt_tags[2] = (MarkerTag){2,  0.150, -0.104, 0.0, 0.0, 0.055};
-    g_mt_tags[3] = (MarkerTag){3, -0.150,  0.104, 0.0, 0.0, 0.055};
-    g_mt_tags[4] = (MarkerTag){4,  0.150,  0.104, 0.0, 0.0, 0.055};
+    g_mt_tags[0] = (MarkerTag){0, 0.0, 0.0, 0.0, 0.0, 0.080};
+    g_mt_tags[1] = (MarkerTag){1, -0.075, -0.100, 0.0, 0.0, 0.038};
+    g_mt_tags[2] = (MarkerTag){2,  0.075, -0.100, 0.0, 0.0, 0.038};
+    g_mt_tags[3] = (MarkerTag){3, -0.075,  0.100, 0.0, 0.0, 0.038};
+    g_mt_tags[4] = (MarkerTag){4,  0.075,  0.100, 0.0, 0.0, 0.038};
 }
 
 static const MarkerTag *mt_find_tag(int id) {

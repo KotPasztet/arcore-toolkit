@@ -11,23 +11,23 @@ tracking can be replaced by a printed fiducial.  Two pieces:
 
 ## 1. Marker
 
-Recommended: the **hybrid A3 sheet** — one large tag for distance, four smaller
+Recommended: the **hybrid A4 sheet** — one large tag for distance, four smaller
 tags for accuracy, PnP disambiguation and partial occlusion.
 
 ```bash
 python3 tools/calib/make_bundle.py
-# bundle_a3_hybrid.pdf — A3 landscape, AprilTag 36h11
-#   ID 0: 110 mm at the centre
-#   IDs 1..4: 55 mm at (+/-150, +/-104) mm
-# bundle_a3_hybrid_tags.txt — matching shim layout
+# bundle_a4_hybrid.pdf — A4 portrait, AprilTag 36h11
+#   ID 0: 80 mm at the centre
+#   IDs 1..4: 38 mm at (+/-75, +/-100) mm
+# bundle_a4_hybrid_tags.txt — matching shim layout
 ```
 
-The shim has the A3 layout built in.  For an A4-only printer use:
+The shim has the A4 layout built in.  For a printer/paper size that supports A3:
 
 ```bash
-python3 tools/calib/make_bundle.py --paper a4
-# central ID 0 = 80 mm at (0,0); corners IDs 1..4 = 38 mm at (+/-75, +/-100) mm
-# bundle_a4_hybrid_tags.txt matches this sheet
+python3 tools/calib/make_bundle.py --paper a3
+# central ID 0 = 110 mm at (0,0); corners IDs 1..4 = 55 mm at (+/-150, +/-104) mm
+# bundle_a3_hybrid_tags.txt matches this sheet
 ```
 
 To override the built-in layout, copy the matching manifest to the target app
@@ -42,8 +42,8 @@ adb push tools/calib/bundle_a4_hybrid_tags.txt \
 
 ```
 # id x_mm y_mm yaw_deg size_mm
-0 0 0 0 110
-1 -150 -104 0 55
+0 0 0 0 80
+1 -75 -100 0 38
 ...
 ```
 
@@ -68,8 +68,9 @@ Rules of thumb:
   `tags` by `measured/100`;
 * keep the white border/quiet zone around every tag free of other tags and
   objects;
-* bigger is better: the central 110 mm tag covers 0.3–2 m, the 55 mm corners are
-  best below ~1 m.
+* bigger is better: the A4 central 80 mm tag covers roughly 0.3–1.2 m, the 38 mm
+  corners are best below ~0.7 m; use `--paper a3` (110 mm / 55 mm) if the
+  printer supports A3 and you need more range.
 
 ## 2. Prototype (no ARCore)
 
@@ -112,9 +113,10 @@ x' = x,   y' = -z,   z' = y
 Accuracy is roughly `0.3 × distance² / (f × tag_size)` for position; at 0.5 m
 with a 150 mm tag it is a few millimetres.
 
-For the hybrid sheet, the central 110 mm tag is the far-range anchor; the four
-55 mm tags dominate the fused result at 0.3–0.8 m and keep tracking alive when
-one or two corners are hidden.
+For the default A4 hybrid sheet, the central 80 mm tag is the far-range anchor;
+the four 38 mm tags dominate the fused result up close and keep tracking alive
+when one or two corners are hidden.  The A3 variant (110 mm / 55 mm) has more
+range but needs A3 paper.
 
 ## 5. Tips
 

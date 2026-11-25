@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Render the hybrid AprilTag 36h11 marker sheet (300 DPI).
 
-A3 landscape: one 110 mm tag (ID 0) in the centre and four 55 mm tags
-(IDs 1..4) at (+/-150, +/-104) mm.
+A4 portrait (default): one 80 mm tag (ID 0) in the centre and four 38 mm tags
+(IDs 1..4) at (+/-75, +/-100) mm.
 
-A4 portrait: one 80 mm tag (ID 0) in the centre and four 38 mm tags at
-(+/-75, +/-100) mm.  Use this when the printer only handles A4.
+A3 landscape (`--paper a3`): one 110 mm tag in the centre and four 55 mm tags at
+(+/-150, +/-104) mm.
 
-The shim's built-in layout is the A3 one.  The generated
+The shim's built-in layout is the A4 one.  The generated
 `bundle_<paper>_hybrid_tags.txt` can be copied to the target app's files
 directory as `tags` to override the layout.
 
@@ -81,7 +81,7 @@ def font(size_px: int):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render a hybrid AprilTag sheet")
-    parser.add_argument("--paper", choices=sorted(PAPERS), default="a3")
+    parser.add_argument("--paper", choices=sorted(PAPERS), default="a4")
     args = parser.parse_args()
 
     paper = PAPERS[args.paper]

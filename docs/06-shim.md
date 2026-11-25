@@ -103,7 +103,7 @@ sequence:
 * a single tag ID is locked while it is visible (`lock_tag=1`); with a multi-tag
   layout, all configured IDs are used and their poses in the common sheet frame
   are fused (weighted by area, margin and reprojection error);
-* the built-in layout is the hybrid A3 sheet (110 mm centre + four 55 mm
+* the built-in layout is the hybrid A4 sheet (80 mm centre + four 38 mm
   corners); the `tags` file overrides it, and a one-line file makes it a single
   tag again;
 * One Euro filter on position/rotation plus constant-velocity prediction
