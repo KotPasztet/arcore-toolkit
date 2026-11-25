@@ -1,7 +1,5 @@
 name: release
 
-# Releases are manual: run this workflow from the Actions tab only after the
-# build/tracking change has been tested on a device.
 on:
   workflow_dispatch:
 
@@ -20,11 +18,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Optional stable release key.  Set these repository secrets to sign every
-      # release with the same key; without them the build uses a throwaway debug
-      # keystore (fine for testing, but users must uninstall between releases).
-      #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
-      #   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
       - name: Release signing key
         shell: bash
         env:
