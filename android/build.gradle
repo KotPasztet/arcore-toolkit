@@ -29,15 +29,6 @@ android {
     }
 }
 
-// Match the classic app module output name: app-debug.apk / app-release.apk.
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.each { output ->
-            output.outputFileName.set("app-" + variant.name + ".apk")
-        }
-    }
-}
-
 dependencies {
     implementation 'com.google.ar:core:1.57.0'
     implementation 'org.opencv:opencv:4.9.0'
