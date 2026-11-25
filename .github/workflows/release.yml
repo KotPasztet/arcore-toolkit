@@ -99,7 +99,19 @@ jobs:
             OUT=libarcore_sdk_c_stock.so ./build.sh
           cp libarcore_sdk_c_stock.so "libarcore_sdk_c_stock-${VERSION_NAME}.so"
 
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcore-toolkit-release-${{ github.run_number }}
+          path: |
+            arcore-toolkit-*.apk
+            tools/shim/libarcore_sdk_c*.so
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Publish release
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
