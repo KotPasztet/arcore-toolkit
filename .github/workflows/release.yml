@@ -2,6 +2,8 @@ name: release
 
 on:
   workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -34,7 +36,11 @@ jobs:
         shell: bash
         run: |
           version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          version_name="${version}-build.${GITHUB_RUN_NUMBER}"
+          if [[ "${GITHUB_REF_NAME:-}" == v* ]]; then
+            version_name="${GITHUB_REF_NAME#v}"
+          else
+            version_name="${version}-build.${GITHUB_RUN_NUMBER}"
+          fi
           tag="v${version_name}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
