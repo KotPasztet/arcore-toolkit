@@ -172,9 +172,10 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 
 ## Релизы
 
-Каждый push в `main` создаёт тег `v<версия>-build.<номер>` и GitHub Release с APK
-(все ABI), маркерным/passthrough шимом и Python wheel/sdist. Чтобы пропустить релиз, добавьте `[no release]`
-в сообщение коммита. Для стабильной подписи между релизами задайте секреты
+Релизы теперь ручные. После проверки сборки/трекинга на устройстве запусти
+workflow **release** во вкладке GitHub Actions. Он создаст тег
+`v<версия>-build.<номер>` и GitHub Release с APK (все ABI), маркерным/passthrough
+шимом и Python wheel/sdist. Для стабильной подписи между релизами задайте секреты
 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
 `ANDROID_KEY_PASSWORD`; иначе CI подписывает одноразовым debug-ключом.
 

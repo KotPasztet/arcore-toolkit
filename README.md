@@ -170,12 +170,13 @@ python3 tools/calib/calib_to_bag.py files/calib/<session> -o session.bag
 
 ## Releases
 
-Every push to `main` creates a tag `v<version>-build.<run>` and a GitHub Release
-with the APK (all ABIs), the marker/pass-through shim libraries and the Python wheel/sdist.  Add `[no release]` to a
-commit message to skip a release.  For a stable signing key across releases,
-configure the `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
-`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` repository secrets; otherwise CI
-uses a throwaway debug key.
+Releases are manual.  After a build/tracking change has been tested on a device,
+run the **release** workflow from the GitHub Actions tab.  It creates a tag
+`v<version>-build.<run>` and a GitHub Release with the APK (all ABIs), the
+marker/pass-through shim libraries and the Python wheel/sdist.  For a stable
+signing key across releases, configure the `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`
+repository secrets; otherwise CI uses a throwaway debug key.
 
 ## License
 

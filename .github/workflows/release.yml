@@ -1,8 +1,8 @@
 name: release
 
+# Releases are manual: run this workflow from the Actions tab only after the
+# build/tracking change has been tested on a device.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   release:
-    if: "github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[no release]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
