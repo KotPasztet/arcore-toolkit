@@ -31,7 +31,6 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/resource.h>
@@ -60,8 +59,6 @@ typedef struct {
 
     float max_jump_m;
     float max_ang_deg;
-    float fuse_jump_m;
-    float fuse_ang_deg;
 
     int predict_on;
     float lead;
@@ -98,8 +95,6 @@ static MarkerTuning g_mt = {
     .beta_rot = 8.0f,
     .max_jump_m = 0.35f,
     .max_ang_deg = 40.0f,
-    .fuse_jump_m = 0.08f,
-    .fuse_ang_deg = 10.0f,
     .predict_on = 1,
     .lead = 0.8f,
     .predict_ms = 150,
@@ -114,39 +109,6 @@ static MarkerTuning g_mt = {
     .refine_edges = 1,
     .threads = 2,
 };
-
-#define MT_MAX_TAGS 16
-
-/* Physical layout of the marker sheet.  Coordinates are in the sheet frame:
- * x right, y down, z out of the paper; yaw is degrees around z; size is the
- * printed black square in metres.  The default is the A4 hybrid sheet:
- * one 80 mm tag in the centre and four 38 mm tags at (75, 100) mm. */
-typedef struct {
-    int id;
-    double x, y, z;
-    double yaw_deg;
-    double size;
-} MarkerTag;
-
-static MarkerTag g_mt_tags[MT_MAX_TAGS];
-static int g_mt_ntags;
-
-static void mt_set_default_tags(void) {
-    /* Default is the A4 portrait hybrid sheet (80 mm centre, 38 mm corners). */
-    g_mt_ntags = 5;
-    g_mt_tags[0] = (MarkerTag){0, 0.0, 0.0, 0.0, 0.0, 0.080};
-    g_mt_tags[1] = (MarkerTag){1, -0.075, -0.100, 0.0, 0.0, 0.038};
-    g_mt_tags[2] = (MarkerTag){2,  0.075, -0.100, 0.0, 0.0, 0.038};
-    g_mt_tags[3] = (MarkerTag){3, -0.075,  0.100, 0.0, 0.0, 0.038};
-    g_mt_tags[4] = (MarkerTag){4,  0.075,  0.100, 0.0, 0.0, 0.038};
-}
-
-static const MarkerTag *mt_find_tag(int id) {
-    for (int i = 0; i < g_mt_ntags; i++) {
-        if (g_mt_tags[i].id == id) return &g_mt_tags[i];
-    }
-    return NULL;
-}
 
 static pthread_mutex_t g_mt_tune_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -267,62 +229,6 @@ static int mt_read_int(const char *name, int *out) {
     return 1;
 }
 
-static void mt_load_tags(void) {
-    mt_set_default_tags();
-
-    FILE *f = fopen(APP_DIR "tags", "r");
-    if (f) {
-        MarkerTag parsed[MT_MAX_TAGS];
-        int n = 0;
-        char line[256];
-        while (fgets(line, sizeof(line), f)) {
-            char *p = line;
-            while (*p && isspace((unsigned char)*p)) p++;
-            if (*p == '#' || *p == '\0') continue;
-            int id;
-            double x, y, yaw, size;
-            if (sscanf(p, "%d %lf %lf %lf %lf", &id, &x, &y, &yaw, &size) != 5) {
-                continue;
-            }
-            if (id < 0 || id > 999 || n >= MT_MAX_TAGS) continue;
-            if (!isfinite(x) || !isfinite(y) || !isfinite(yaw) || !isfinite(size)) continue;
-            if (x < -2000.0 || x > 2000.0 || y < -2000.0 || y > 2000.0) continue;
-            if (size < 20.0 || size > 1000.0) continue;
-            int duplicate = 0;
-            for (int i = 0; i < n; i++) {
-                if (parsed[i].id == id) { duplicate = 1; break; }
-            }
-            if (duplicate) continue;
-            parsed[n].id = id;
-            parsed[n].x = x / 1000.0;
-            parsed[n].y = y / 1000.0;
-            parsed[n].z = 0.0;
-            parsed[n].yaw_deg = yaw;
-            parsed[n].size = size / 1000.0;
-            n++;
-        }
-        fclose(f);
-        if (n > 0) {
-            memcpy(g_mt_tags, parsed, (size_t)n * sizeof(MarkerTag));
-            g_mt_ntags = n;
-        }
-    }
-
-    static int last_n = -1;
-    static int last_first = -1;
-    if (g_mt_ntags != last_n || (g_mt_ntags > 0 && g_mt_tags[0].id != last_first)) {
-        last_n = g_mt_ntags;
-        last_first = g_mt_ntags > 0 ? g_mt_tags[0].id : -1;
-        shim_log("tag layout: %d tags", g_mt_ntags);
-        for (int i = 0; i < g_mt_ntags; i++) {
-            shim_log("  id=%d x=%.1fmm y=%.1fmm yaw=%.1f size=%.1fmm",
-                     g_mt_tags[i].id, g_mt_tags[i].x * 1000.0,
-                     g_mt_tags[i].y * 1000.0, g_mt_tags[i].yaw_deg,
-                     g_mt_tags[i].size * 1000.0);
-        }
-    }
-}
-
 static void mt_tuning_snapshot(MarkerTuning *out) {
     pthread_mutex_lock(&g_mt_tune_lock);
     *out = g_mt;
@@ -330,8 +236,6 @@ static void mt_tuning_snapshot(MarkerTuning *out) {
 }
 
 static void mt_load_tuning(void) {
-    mt_load_tags();
-
     MarkerTuning t;
     pthread_mutex_lock(&g_mt_tune_lock);
     t = g_mt;
@@ -355,10 +259,6 @@ static void mt_load_tuning(void) {
         t.max_jump_m = (float)v[0];
     if (mt_read_doubles("max_ang", v, 1) && v[0] > 0.0)
         t.max_ang_deg = (float)v[0];
-    if (mt_read_doubles("fuse_jump", v, 1) && v[0] > 0.0)
-        t.fuse_jump_m = (float)v[0];
-    if (mt_read_doubles("fuse_ang", v, 1) && v[0] > 0.0)
-        t.fuse_ang_deg = (float)v[0];
     if (mt_read_doubles("euro", v, 3)) {
         if (v[0] > 0.05) t.f_min = (float)v[0];
         if (v[1] >= 0.0) t.beta_pos = (float)v[1];
@@ -404,13 +304,12 @@ static void mt_load_tuning(void) {
     if (!logged) {
         logged = 1;
         shim_log("tune dist=%d(%.4f,%.4f,%.4f,%.4f) tag=%.4f margin=%.0f maxpx=%.1f "
-                 "filter=%d jump=%.2f/%.0f fuse=%.3f/%.0f predict=%d lead=%.2f "
-                 "hold=%dms latency=%dms decimate=%.1f/%.1f tag_id=%d lock=%d",
+                 "filter=%d jump=%.2f/%.0f predict=%d lead=%.2f hold=%dms "
+                 "latency=%dms decimate=%.1f/%.1f tag_id=%d lock=%d",
                  t.dist_on, t.k1, t.k2, t.p1, t.p2, t.tag_size, t.min_margin,
                  t.max_px, t.filter_on, t.max_jump_m, t.max_ang_deg,
-                 t.fuse_jump_m, t.fuse_ang_deg, t.predict_on, t.lead,
-                 t.hold_ms, t.latency_ms, t.decimate_track,
-                 t.decimate_search, t.tag_id, t.lock_tag);
+                 t.predict_on, t.lead, t.hold_ms, t.latency_ms,
+                 t.decimate_track, t.decimate_search, t.tag_id, t.lock_tag);
     }
     pthread_mutex_unlock(&g_mt_tune_lock);
 }
@@ -598,50 +497,19 @@ static void mt_undistort_px(float u, float v, float fx, float fy,
 /* APRILTAG POSE -> ARCore CAMERA POSE                                  */
 /* ------------------------------------------------------------------ */
 
-static void mt_mat3_mul(const double A[3][3], const double B[3][3], double C[3][3]) {
+/* Convert the tag pose returned by AprilTag (tag in camera optical frame) to
+ * the camera pose in the shim's world frame.  The display rotation is applied
+ * exactly as before so existing games keep the same coordinate convention. */
+static int mt_camera_from_tag_pose(const apriltag_pose_t *pose, int world_mode,
+                                   double c[3], double q[4]) {
+    if (!pose->R || !pose->t) return 0;
+
+    double R[3][3], t[3];
     for (int r = 0; r < 3; r++) {
-        for (int k = 0; k < 3; k++) {
-            C[r][k] = A[r][0]*B[0][k] + A[r][1]*B[1][k] + A[r][2]*B[2][k];
-        }
+        for (int k = 0; k < 3; k++) R[r][k] = matd_get(pose->R, r, k);
+        t[r] = matd_get(pose->t, r, 0);
     }
-}
 
-static void mt_mat3_transpose(const double A[3][3], double T[3][3]) {
-    for (int r = 0; r < 3; r++)
-        for (int k = 0; k < 3; k++) T[r][k] = A[k][r];
-}
-
-static void mt_mat3_apply(const double R[3][3], const double v[3], double out[3]) {
-    for (int r = 0; r < 3; r++) {
-        out[r] = R[r][0]*v[0] + R[r][1]*v[1] + R[r][2]*v[2];
-    }
-}
-
-/* Map a tag pose (tag -> camera) into the common sheet frame (sheet -> camera),
- * using the known tag position/orientation on the printed sheet. */
-static void mt_tag_pose_to_sheet(const MarkerTag *tag,
-                                 const double R[3][3], const double t[3],
-                                 double R_out[3][3], double t_out[3]) {
-    double yaw = tag->yaw_deg * M_PI / 180.0;
-    double cz = cos(yaw), sz = sin(yaw);
-    double Rst[3][3] = {{cz, -sz, 0.0}, {sz, cz, 0.0}, {0.0, 0.0, 1.0}};
-    double tst[3] = {tag->x, tag->y, tag->z};
-    double RstT[3][3];
-    mt_mat3_transpose(Rst, RstT);
-
-    double Rcs[3][3];
-    mt_mat3_mul(R, RstT, Rcs);
-    double tmp[3];
-    mt_mat3_apply(Rcs, tst, tmp);
-    for (int i = 0; i < 3; i++) t_out[i] = t[i] - tmp[i];
-    memcpy(R_out, Rcs, sizeof(Rcs));
-}
-
-/* Convert a tag/sheet pose (pose in camera optical frame) to the camera pose
- * in the shim's world frame.  The display rotation is applied exactly as
- * before so existing games keep the same coordinate convention. */
-static int mt_camera_from_rt(const double R[3][3], const double t[3],
-                             int world_mode, double c[3], double q[4]) {
     const double F[3] = {1.0, -1.0, -1.0};
     double Rg[3][3];
     for (int r = 0; r < 3; r++)
@@ -873,9 +741,6 @@ static int mt_make_candidate(const apriltag_detection_t *det, const MarkerTuning
                              float fx, float fy, float cx, float cy,
                              int have_pred, const double pc[3], const double pq[4],
                              MarkerCandidate *out) {
-    const MarkerTag *tag = mt_find_tag(det->id);
-    if (!tag) return 0;
-
     apriltag_detection_t d = *det;
     if (t->dist_on) {
         for (int i = 0; i < 4; i++) {
@@ -888,7 +753,7 @@ static int mt_make_candidate(const apriltag_detection_t *det, const MarkerTuning
 
     apriltag_detection_info_t info;
     info.det = &d;
-    info.tagsize = tag->size;
+    info.tagsize = t->tag_size;
     info.fx = fx;
     info.fy = fy;
     info.cx = cx;
@@ -911,16 +776,8 @@ static int mt_make_candidate(const apriltag_detection_t *det, const MarkerTuning
         double rms = (fx > 0.0f) ? sqrt(err / 4.0) * fx : 0.0;
         if (!isfinite(rms)) continue;
 
-        double R_tag[3][3], t_tag[3];
-        for (int r = 0; r < 3; r++) {
-            for (int k = 0; k < 3; k++) R_tag[r][k] = matd_get(pose->R, r, k);
-            t_tag[r] = matd_get(pose->t, r, 0);
-        }
-        double R_sheet[3][3], t_sheet[3];
-        mt_tag_pose_to_sheet(tag, R_tag, t_tag, R_sheet, t_sheet);
-
         double c[3], q[4];
-        if (!mt_camera_from_rt(R_sheet, t_sheet, t->world_mode, c, q)) continue;
+        if (!mt_camera_from_tag_pose(pose, t->world_mode, c, q)) continue;
 
         double cost = mt_candidate_cost(rms, c, q, have_pred, pc, pq, t);
         if (!found || cost < best_cost) {
@@ -1106,86 +963,6 @@ static int mt_is_tracking(void) {
 }
 
 /* ------------------------------------------------------------------ */
-/* MULTI-TAG FUSION                                                    */
-/* ------------------------------------------------------------------ */
-
-static double mt_candidate_weight(const MarkerCandidate *c) {
-    double area = c->area > 1.0 ? c->area : 1.0;
-    return sqrt(area) * (c->margin + 1.0) / (c->rms_px + 0.5);
-}
-
-/* Weighted average of per-tag poses after they were mapped to the common
- * sheet frame.  Tags that disagree with the strongest candidate are ignored,
- * which also rejects a single tag that happened to pick the wrong PnP
- * solution. */
-static int mt_fuse_candidates(const MarkerTuning *t, const MarkerCandidate *in,
-                              int n, MarkerCandidate *out) {
-    if (n <= 0) return 0;
-    int ref = 0;
-    double ref_w = -1.0;
-    for (int i = 0; i < n; i++) {
-        double w = mt_candidate_weight(&in[i]);
-        if (w > ref_w) {
-            ref_w = w;
-            ref = i;
-        }
-    }
-
-    double max_jump = t->fuse_jump_m > 0.005f ? t->fuse_jump_m : 0.005;
-    double max_ang = t->fuse_ang_deg > 1.0f ? t->fuse_ang_deg : 1.0;
-
-    double sum_w = 0.0;
-    double c[3] = {0.0, 0.0, 0.0};
-    double q[4] = {0.0, 0.0, 0.0, 0.0};
-    double rms = 0.0, margin = 0.0;
-    int used = 0;
-
-    for (int i = 0; i < n; i++) {
-        if (mt_vec3_dist(in[i].c, in[ref].c) > max_jump) continue;
-        if (mt_quat_angle_deg(in[i].q, in[ref].q) > max_ang) continue;
-        double w = mt_candidate_weight(&in[i]);
-        if (w <= 0.0) continue;
-        double dot = in[i].q[0]*in[ref].q[0] + in[i].q[1]*in[ref].q[1]
-                   + in[i].q[2]*in[ref].q[2] + in[i].q[3]*in[ref].q[3];
-        double sign = dot < 0.0 ? -1.0 : 1.0;
-        for (int k = 0; k < 3; k++) c[k] += w * in[i].c[k];
-        for (int k = 0; k < 4; k++) q[k] += w * sign * in[i].q[k];
-        rms += w * in[i].rms_px;
-        margin += w * in[i].margin;
-        sum_w += w;
-        used++;
-    }
-
-    if (sum_w <= 0.0 || used == 0) {
-        *out = in[ref];
-        return 1;
-    }
-    for (int k = 0; k < 3; k++) c[k] /= sum_w;
-    double qn = sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
-    if (qn < 1e-9) {
-        *out = in[ref];
-        return 1;
-    }
-    for (int k = 0; k < 4; k++) q[k] /= qn;
-
-    *out = in[ref];
-    memcpy(out->c, c, sizeof(c));
-    memcpy(out->q, q, sizeof(q));
-    out->rms_px = rms / sum_w;
-    out->margin = margin / sum_w;
-    out->area = in[ref].area;
-    out->strong = 1;
-    out->cost = 0.0;
-
-    static int last_used = -1;
-    if (used != last_used) {
-        last_used = used;
-        shim_log("fused %d/%d tags", used, n);
-    }
-    return 1;
-}
-
-/* ------------------------------------------------------------------ */
 /* PER-FRAME DETECTION                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -1259,10 +1036,8 @@ static void mt_process_frame(const MarkerFrame *f) {
     zarray_t *dets = apriltag_detector_detect(g_mt_td, &im);
     int64_t proc_time = now_ns() - proc_start;
 
-    MarkerCandidate cands[MT_MAX_TAGS];
-    MarkerCandidate fallback;
-    int ncands = 0, have_fallback = 0;
-    int single_tag = g_mt_ntags <= 1;
+    MarkerCandidate best, fallback;
+    int have_best = 0, have_fallback = 0;
     int ndets = zarray_size(dets);
 
     for (int i = 0; i < ndets; i++) {
@@ -1270,11 +1045,7 @@ static void mt_process_frame(const MarkerFrame *f) {
         zarray_get(dets, i, &det);
         if (!det) continue;
         if (t.tag_id >= 0 && det->id != t.tag_id) continue;
-        if (!mt_find_tag(det->id)) continue;
-        if (single_tag && tracking && t.lock_tag && last_id >= 0
-                && det->id != last_id) {
-            continue;
-        }
+        if (tracking && t.lock_tag && last_id >= 0 && det->id != last_id) continue;
 
         double area = mt_quad_area(det);
         if (area < t.min_area) continue;
@@ -1290,25 +1061,29 @@ static void mt_process_frame(const MarkerFrame *f) {
         if (cand.area < t.min_area) continue;
         cand.strong = strong;
 
+        /* Prefer larger tags when the geometric costs are close: a tiny tag
+         * far away can have a slightly lower reprojection error but a much
+         * noisier pose. */
         double score = cand.cost + 100.0 / (cand.area > 1.0 ? cand.area : 1.0);
         if (!strong) score += 3.0;
         if (last_id >= 0 && cand.id != last_id) score += 0.5;
 
         if (strong) {
-            if (ncands < MT_MAX_TAGS) cands[ncands++] = cand;
-        } else if (!have_fallback || score < fallback.cost) {
-            fallback = cand;
-            fallback.cost = score;
-            have_fallback = 1;
+            if (!have_best || score < best.cost) {
+                best = cand;
+                best.cost = score;
+                have_best = 1;
+            }
+        } else {
+            if (!have_fallback || score < fallback.cost) {
+                fallback = cand;
+                fallback.cost = score;
+                have_fallback = 1;
+            }
         }
     }
 
-    MarkerCandidate best;
-    int have_best = 0;
-    if (ncands > 0) {
-        mt_fuse_candidates(&t, cands, ncands, &best);
-        have_best = 1;
-    } else if (have_fallback && (!tracking || now - last_det > 300000000LL)) {
+    if (!have_best && have_fallback && (!tracking || now - last_det > 300000000LL)) {
         best = fallback;
         have_best = 1;
         if (mt_log_gate()) {

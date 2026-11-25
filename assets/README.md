@@ -3,13 +3,9 @@
 Printable targets are generated, not committed:
 
 ```bash
-python3 tools/calib/make_marker.py      # marker_a4_150mm.pdf (single tag, ID 0)
-python3 tools/calib/make_bundle.py      # bundle_a4_hybrid.pdf (default 5-tag A4 sheet)
-python3 tools/calib/make_bundle.py --paper a3  # bundle_a3_hybrid.pdf
+python3 tools/calib/make_marker.py      # marker_a4_150mm.pdf (AprilTag 36h11 ID 0)
 python3 tools/calib/make_aprilgrid.py   # aprilgrid_a4_6x6_25mm.pdf (Kalibr target)
 ```
 
-The scripts download tag images from the AprilRobotics/apriltag-imgs repository
-and lay them out at 300 DPI with a 100 mm scale bar.  `make_bundle.py` defaults
-to A4 portrait and also writes `tools/calib/bundle_a4_hybrid_tags.txt` for the
-shim's `tags` override.
+Both scripts download the tag images from the AprilRobotics/apriltag-imgs
+repository and lay them out for A4 at 300 DPI with a 100 mm scale bar.
